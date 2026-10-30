@@ -10,6 +10,8 @@ and run `spotifast.exe`. Windows may identify this unsigned custom build as an
 unknown publisher. No installer or administrator access is needed.
 See the [installation guide](INSTALL-LUCID.md) for sign-in, one-time Soloist
 pairing, the Raphael background, window controls and safe updates.
+The package includes both gold **TrueVision / Raphael** and blue **GreatSage**.
+Switch between them in **Settings → Appearance → Theme**.
 
 This fork keeps its settings in `spotifast-data` beside the executable. Keep
 that folder private. Do not send your configured folder to friends: send the
@@ -93,6 +95,8 @@ animation; reduced motion, pause and the existing power budget stop rotation.
 Three fixed-size cached textures use about 8.4 MiB of GPU memory in total,
 independent of window resizing. Decoded pixel copies are released after upload.
 Each frame adds only three quads.
+Great Sage recolours the same geometry once on selection and releases the
+inactive theme's textures, retaining the same memory and drawing budget.
 Existing account, queue and playback logic remains upstream-owned. This first
 port does not reproduce every Lucid setting or its browser shader and shimmer
 animations. MilkDrop is omitted from the Windows package.

@@ -13,6 +13,12 @@ releases too. Copy it into the `themes` directory beside `settings.json`, run
 The palette changes colours only on stock Spotifast. Raphael's decorative
 background requires this fork built with `--features lucid`.
 
+`GreatSage.json` is the separate blue variant: navy surfaces, azure controls,
+ice-white text and cyan/blue arrays. Select **GreatSage** in Appearance. It
+shares Raphael's geometry, recoloured once when selected; no duplicate SVGs,
+browser, worker, dependency or persistent setting is added. Switching themes
+releases the previous array textures, keeping only one 8.4 MiB set on the GPU.
+
 ## Build and update on Windows
 
 Install the pinned Rust toolchain and Visual Studio Build Tools' C++ workload.

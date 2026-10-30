@@ -310,7 +310,7 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
         .frame(lucid::panel(Frame::new().fill(palette.window), &palette))
         .show(ui, |ui| {
             let rect = ui.max_rect();
-            lucid::raphael(app, ui);
+            lucid::arrays(app, ui);
             let page = app.page().clone();
             let overview = matches!(
                 page,

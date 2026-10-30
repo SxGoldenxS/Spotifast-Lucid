@@ -27,6 +27,10 @@ Its transparent gold arrays, teal glow and changing album background appear
 on the main page. **Settings → Appearance → Colour from album art** controls
 the album imagery; the decorative arrays also work with that setting off.
 Choose another theme to remove the Raphael artwork.
+For the separate blue **Great Sage** variant, choose **GreatSage** in
+**Settings → Appearance → Theme**. It has deep navy panels, azure controls,
+ice-white text and blue/cyan arrays. Choose **TrueVision** to return to gold.
+Both keep the same album backgrounds and slow rotation behaviour.
 Use this fork for the decorative background; copying its palette into stock
 Spotifast changes colours only.
 
@@ -47,6 +51,9 @@ Quit Spotifast completely with **Ctrl+Q**. Back up the old executable and
 replace only `spotifast.exe` with the one from the new ZIP. Keep your existing
 `spotifast-data` folder so settings, sign-in and pairing survive. Do not copy
 fresh default settings over an existing profile.
+Copy any new palette files you do not already have, such as `GreatSage.json`,
+from the ZIP's `spotifast-data/config/themes` into your own themes folder.
+Then reopen Spotifast and select the new theme in Appearance.
 
 Send friends the release link or clean release ZIP. **Never share your running
 app folder, `spotifast-data`, Client ID, Soloist key or credentials.** Each person

@@ -16,6 +16,106 @@ const PRIMARY: &[u8] = include_bytes!("../../contrib/lucid/raphael/primary.svg")
 const SECONDARY: &[u8] = include_bytes!("../../contrib/lucid/raphael/secondary.svg");
 const GLOW: &[u8] = include_bytes!("../../contrib/lucid/raphael/glow.svg");
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ArrayTheme {
+    Raphael,
+    GreatSage,
+}
+
+impl ArrayTheme {
+    fn selected(filename: Option<&str>) -> Option<Self> {
+        match filename {
+            Some("TrueVision.json") => Some(Self::Raphael),
+            Some("GreatSage.json") => Some(Self::GreatSage),
+            _ => None,
+        }
+    }
+
+    /// Glow, secondary array, primary array. Shared geometry, separate colours.
+    fn uris(self) -> [&'static str; 3] {
+        match self {
+            Self::Raphael => [
+                "bytes://raphael/glow.svg",
+                "bytes://raphael/secondary.svg",
+                "bytes://raphael/primary.svg",
+            ],
+            Self::GreatSage => [
+                "bytes://great-sage/glow.svg",
+                "bytes://great-sage/secondary.svg",
+                "bytes://great-sage/primary.svg",
+            ],
+        }
+    }
+}
+
+/// Recolour only on theme selection, not per frame. One source of geometry
+/// keeps future Raphael artwork updates applicable to both themes.
+fn great_sage_svg(bytes: &[u8]) -> Vec<u8> {
+    let mut svg = std::str::from_utf8(bytes)
+        .expect("embedded array SVG is UTF-8")
+        .to_owned();
+    for (original, blue) in [
+        ("#0d1118", "#080f1d"),
+        ("#1c1a18", "#101d32"),
+        ("#080c12", "#060e1b"),
+        ("#d3ae5b", "#56b9ff"),
+        ("#f2e6c3", "#e3f6ff"),
+        ("#fffbe7", "#f4fdff"),
+        ("#ffa934", "#238dff"),
+        ("#ffefb8", "#bceaff"),
+        ("#ff8e2b", "#165ae8"),
+        ("#ffba49", "#3daeff"),
+        ("#ffedaf", "#b8edff"),
+        ("#ffffe6", "#f1feff"),
+        ("#fff2ad", "#d6f8ff"),
+        ("#ffca49", "#67d5ff"),
+        ("#ffb22e", "#2297ff"),
+        ("#36d6bd", "#3caaff"),
+        ("#239b99", "#267bc6"),
+        ("#174f68", "#143c72"),
+        ("#27d9b0", "#38bfff"),
+        ("#3ddcc7", "#75dcff"),
+        ("#216dba", "#225ce1"),
+        ("#26c6a7", "#39b5ff"),
+        ("#6ae5cd", "#91e5ff"),
+        ("#3a8bd0", "#2777df"),
+        ("#46e3c2", "#45bdff"),
+        ("#a7ffe7", "#c4f8ff"),
+        ("#459ee3", "#458fff"),
+    ] {
+        svg = svg.replace(original, blue);
+    }
+    svg.into_bytes()
+}
+
+fn prepare_arrays(ctx: &egui::Context, selected: Option<ArrayTheme>) {
+    let previous = ctx.data_mut(|data| {
+        std::mem::replace(
+            data.get_temp_mut_or_default::<Option<ArrayTheme>>(Id::new("lucid-array-theme")),
+            selected,
+        )
+    });
+    if previous == selected {
+        return;
+    }
+    // Keep only the active theme's 8.4 MiB texture set, even after many switches.
+    if let Some(previous) = previous {
+        for uri in previous.uris() {
+            ctx.forget_image(uri);
+        }
+    }
+    ctx.data_mut(|data| data.remove::<DecorationClock>(Id::new(RAPHAEL_CLOCK)));
+    if let Some(selected) = selected {
+        egui_extras::install_image_loaders(ctx);
+        for (uri, bytes) in selected.uris().into_iter().zip([GLOW, SECONDARY, PRIMARY]) {
+            match selected {
+                ArrayTheme::Raphael => ctx.include_bytes(uri, bytes),
+                ArrayTheme::GreatSage => ctx.include_bytes(uri, great_sage_svg(bytes)),
+            }
+        }
+    }
+}
+
 /// Preserve the original frame exactly in ordinary upstream builds.
 pub(super) fn panel(frame: Frame, palette: &Palette) -> Frame {
     if !ENABLED {
@@ -48,6 +148,7 @@ struct Backdrop {
 pub(super) fn end_session(ctx: &egui::Context) {
     ctx.data_mut(|data| data.remove::<Backdrop>(Id::new(BACKDROP_ID)));
     ctx.data_mut(|data| data.remove::<DecorationClock>(Id::new(RAPHAEL_CLOCK)));
+    prepare_arrays(ctx, None);
 }
 
 /// A paused/hidden window must not accrue a jump in decorative animation.
@@ -72,10 +173,16 @@ impl DecorationClock {
 /// The original transparent arrays, behind content but above the panel fill.
 /// Three cached textures and three quads; no SVG parsing or rasterization per
 /// frame, no layout allocation, hit targets, network requests or new settings.
-pub(super) fn raphael(app: &App, ui: &egui::Ui) {
-    if !ENABLED || app.settings.custom_theme.as_deref() != Some("TrueVision.json") {
+pub(super) fn arrays(app: &App, ui: &egui::Ui) {
+    if !ENABLED {
         return;
     }
+    let selected = ArrayTheme::selected(app.settings.custom_theme.as_deref());
+    prepare_arrays(ui.ctx(), selected);
+    let Some(selected) = selected else {
+        return;
+    };
+    let [glow, secondary, primary] = selected.uris();
     let rect = ui.max_rect();
     if !ui.is_rect_visible(rect) {
         return;
@@ -98,19 +205,10 @@ pub(super) fn raphael(app: &App, ui: &egui::Ui) {
     let scale = (rect.width() / 1280.0).min(rect.height() / 800.0);
     let square = egui::Vec2::splat(1600.0 * scale);
     let tint = Color32::WHITE.gamma_multiply(if app.palette.dark { 1.0 } else { 0.45 });
+    decoration(&painter, glow, [256, 512], rect, 0.0, tint);
     decoration(
         &painter,
-        "bytes://raphael/glow.svg",
-        GLOW,
-        [256, 512],
-        rect,
-        0.0,
-        tint,
-    );
-    decoration(
-        &painter,
-        "bytes://raphael/secondary.svg",
-        SECONDARY,
+        secondary,
         [640, 640],
         Rect::from_center_size(rect.lerp_inside(egui::vec2(-0.01, 0.63)), square),
         -seconds * std::f32::consts::TAU / 180.0,
@@ -118,8 +216,7 @@ pub(super) fn raphael(app: &App, ui: &egui::Ui) {
     );
     decoration(
         &painter,
-        "bytes://raphael/primary.svg",
-        PRIMARY,
+        primary,
         [1280, 1280],
         Rect::from_center_size(rect.lerp_inside(egui::vec2(0.72, 0.52)), square),
         seconds * std::f32::consts::TAU / 300.0,
@@ -130,7 +227,6 @@ pub(super) fn raphael(app: &App, ui: &egui::Ui) {
 fn decoration(
     painter: &egui::Painter,
     uri: &'static str,
-    bytes: &'static [u8],
     size: [u32; 2],
     rect: Rect,
     angle: f32,
@@ -138,16 +234,6 @@ fn decoration(
 ) {
     let ctx = painter.ctx();
     // Fixed hints bound GPU memory across resizes/DPI changes (8.4 MiB total).
-    let installed = ctx.data_mut(|data| {
-        std::mem::replace(
-            data.get_temp_mut_or_default::<bool>(Id::new("raphael-loaders")),
-            true,
-        )
-    });
-    if !installed {
-        egui_extras::install_image_loaders(ctx);
-    }
-    ctx.include_bytes(uri, bytes);
     match ctx.try_load_texture(
         uri,
         egui::TextureOptions::LINEAR,
@@ -180,7 +266,7 @@ fn decoration(
                 previous
             });
             if !reported {
-                log::warn!("Raphael artwork {uri} could not load: {error}");
+                log::warn!("Theme artwork {uri} could not load: {error}");
             }
         }
     }
@@ -277,6 +363,108 @@ mod tests {
     use egui::vec2;
 
     #[test]
+    fn great_sage_is_a_separate_blue_palette_with_the_same_geometry() {
+        let palette: Palette =
+            fastframe_theme::parse_palette(include_str!("../../contrib/lucid/GreatSage.json"))
+                .unwrap();
+        assert_eq!(palette.accent, Color32::from_rgb(0x56, 0xb9, 0xff));
+        assert_eq!(
+            ArrayTheme::selected(Some("GreatSage.json")),
+            Some(ArrayTheme::GreatSage)
+        );
+        assert_eq!(
+            ArrayTheme::selected(Some("TrueVision.json")),
+            Some(ArrayTheme::Raphael)
+        );
+        assert_eq!(ArrayTheme::selected(Some("other.json")), None);
+        let geometry = |svg: &str| {
+            svg.split('#')
+                .map(|part| {
+                    if part.len() >= 6 && part.as_bytes()[..6].iter().all(u8::is_ascii_hexdigit) {
+                        format!("COLOUR{}", &part[6..])
+                    } else {
+                        part.to_owned()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("#")
+        };
+        for bytes in [PRIMARY, SECONDARY, GLOW] {
+            let blue = great_sage_svg(bytes);
+            let blue_svg = std::str::from_utf8(&blue).unwrap();
+            assert_eq!(
+                geometry(std::str::from_utf8(bytes).unwrap()),
+                geometry(blue_svg)
+            );
+            assert!(!blue_svg.contains("#d3ae5b"));
+            assert!(!blue_svg.contains("#ffa934"));
+            let image = egui_extras::image::load_svg_bytes_with_size(
+                &blue,
+                egui::load::SizeHint::Width(128),
+                &Default::default(),
+            )
+            .unwrap();
+            let blue_total: u64 = image.pixels.iter().map(|pixel| u64::from(pixel.b())).sum();
+            let red_total: u64 = image.pixels.iter().map(|pixel| u64::from(pixel.r())).sum();
+            assert!(
+                blue_total > red_total,
+                "Great Sage must render blue rather than gold"
+            );
+        }
+    }
+
+    #[test]
+    fn changing_the_array_theme_releases_the_previous_gpu_textures() {
+        let ctx = egui::Context::default();
+        let mut previous = None;
+        for selected in [
+            Some(ArrayTheme::Raphael),
+            Some(ArrayTheme::GreatSage),
+            Some(ArrayTheme::Raphael),
+            None,
+        ] {
+            let mut current = None;
+            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                prepare_arrays(ui.ctx(), selected);
+                if let Some(selected) = selected {
+                    let uri = selected.uris()[2];
+                    decoration(
+                        ui.painter(),
+                        uri,
+                        [128, 128],
+                        ui.max_rect(),
+                        0.0,
+                        Color32::WHITE,
+                    );
+                    current = ctx
+                        .try_load_texture(
+                            uri,
+                            egui::TextureOptions::LINEAR,
+                            egui::load::SizeHint::Size {
+                                width: 128,
+                                height: 128,
+                                maintain_aspect_ratio: false,
+                            },
+                        )
+                        .unwrap()
+                        .texture_id();
+                }
+            });
+            let released =
+                previous.is_none_or(|previous| output.textures_delta.free.contains(&previous));
+            output.textures_delta.clear();
+            assert!(
+                released,
+                "theme switching must release the inactive texture set"
+            );
+            if previous.is_some() && current.is_some() {
+                assert_ne!(previous, current);
+            }
+            previous = current;
+        }
+    }
+
+    #[test]
     fn decoration_freezes_when_paused_and_does_not_jump_after_a_hidden_window() {
         let mut clock = DecorationClock::default();
         assert_eq!(clock.advance(10.0, true), 0.0);
@@ -312,12 +500,13 @@ mod tests {
     #[test]
     fn resizing_reuses_the_decoration_texture_instead_of_allocating_another() {
         let ctx = egui::Context::default();
+        egui_extras::install_image_loaders(&ctx);
+        ctx.include_bytes("bytes://raphael/cache-test.svg", PRIMARY);
         for (width, uploads) in [(760.0, 1), (1280.0, 0), (1920.0, 0)] {
             let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
                 decoration(
                     ui.painter(),
                     "bytes://raphael/cache-test.svg",
-                    PRIMARY,
                     [128, 128],
                     Rect::from_min_size(pos2(0.0, 0.0), vec2(width, 800.0)),
                     0.0,

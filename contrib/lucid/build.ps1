@@ -46,7 +46,7 @@ try {
     Set-Content -LiteralPath (Join-Path $out 'spotifast-portable.txt') -Value '' -Encoding utf8
     $themes = Join-Path $out 'spotifast-data\config\themes'
     New-Item -ItemType Directory -Force -Path $themes | Out-Null
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'TrueVision.json') -Destination $themes -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'TrueVision.json'),(Join-Path $PSScriptRoot 'GreatSage.json') -Destination $themes -Force
     $settings = Join-Path $out 'spotifast-data\config\settings.json'
     if (!(Test-Path -LiteralPath $settings)) {
         Set-Content -LiteralPath $settings -Value '{"theme":"dark","custom_theme":"TrueVision.json","custom_titlebar":true}' -Encoding utf8

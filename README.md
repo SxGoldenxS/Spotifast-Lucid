@@ -3,6 +3,7 @@
 An independently maintained Spotifast fork with Lucid-inspired rounded panels,
 an album-art backdrop, Raphael's gold arrays and teal glow, the TrueVision
 palette and a custom blue slime icon.
+Includes a separate navy/azure **Great Sage** theme, selectable in Appearance.
 
 **[Download for Windows](https://github.com/SxGoldenxS/Spotifast-Lucid/releases/latest)**
  · **[Installation guide](INSTALL-LUCID.md)** · **[Updates and credits](FORK.md)**
