@@ -23,9 +23,9 @@ jobs:
           $name = 'Spotifast-Lucid-Windows-x64'
           $stage = Join-Path $env:RUNNER_TEMP $name
           New-Item -ItemType Directory -Path "$stage/spotifast-data/config/themes" -Force | Out-Null
-          Copy-Item dist/Spotifast-Lucid/spotifast.exe, dist/Spotifast-Lucid/spotifast-portable.txt, LICENSE, FORK.md $stage
+          Copy-Item dist/Spotifast-Lucid/spotifast.exe, dist/Spotifast-Lucid/spotifast-portable.txt, LICENSE, FORK.md, INSTALL-LUCID.md $stage
           Copy-Item contrib/lucid/TrueVision.json "$stage/spotifast-data/config/themes/"
-          Set-Content "$stage/spotifast-data/config/settings.json" '{"theme":"dark","custom_theme":"TrueVision.json"}' -Encoding utf8
+          Set-Content "$stage/spotifast-data/config/settings.json" '{"theme":"dark","custom_theme":"TrueVision.json","custom_titlebar":true}' -Encoding utf8
           Compress-Archive -LiteralPath $stage -DestinationPath "$name.zip"
           $hash = (Get-FileHash "$name.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content SHA256SUMS.txt "$hash  $name.zip" -Encoding ascii
@@ -40,4 +40,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create $env:GITHUB_REF_NAME Spotifast-Lucid-Windows-x64.zip SHA256SUMS.txt --title "Spotifast Lucid $env:GITHUB_REF_NAME" --notes-file FORK.md
+        run: |
+          $notes = "contrib/lucid/RELEASE-$env:GITHUB_REF_NAME.md"
+          if (!(Test-Path -LiteralPath $notes)) { $notes = 'FORK.md' }
+          gh release create $env:GITHUB_REF_NAME Spotifast-Lucid-Windows-x64.zip SHA256SUMS.txt --title "Spotifast Lucid $env:GITHUB_REF_NAME" --notes-file $notes

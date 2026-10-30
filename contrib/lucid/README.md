@@ -1,7 +1,8 @@
 # Lucid-inspired presentation for Spotifast
 
-This local port adds rounded glass panels, a matching player and a softened
-now-playing album background with short track transitions. It draws natively
+This local port adds rounded glass panels, a matching player, Raphael's gold
+arrays and teal glow, and a softened now-playing album background with short
+track transitions. It draws natively
 with egui. It uses Spotifast's existing bounded artwork workers and respects
 reduced motion and the existing **Colour from album art** setting.
 
@@ -9,6 +10,8 @@ reduced motion and the existing **Colour from album art** setting.
 dark blue surfaces and a teal fallback tint. It works with unmodified official
 releases too. Copy it into the `themes` directory beside `settings.json`, run
 `spotifast reload-themes`, then select **TrueVision** in Appearance.
+The palette changes colours only on stock Spotifast. Raphael's decorative
+background requires this fork built with `--features lucid`.
 
 ## Build and update on Windows
 
@@ -52,10 +55,24 @@ The design references [Lucid](https://github.com/sanoojes/spicetify-lucid).
 This is an original native implementation; Lucid's React/CSS/shader code and
 assets are not bundled. No browser, analytics or extra artwork service is
 added. Spotify's existing covers supply the backdrop. Colours were mapped
-from the local TrueVision overlay; its decorative artwork is not included.
+from the local TrueVision overlay. `raphael/*.svg` contains its transparent
+geometric artwork, supplied by the project owner. Original artwork source and
+licence were not provided; rights remain with the respective owners, separate
+from the code's MIT licence. No personal icon, account details, scripts,
+external references or embedded browser animations are in these SVGs.
 
-This first port does not recreate Lucid's shader animation, every layout
-option, or TrueVision's analytical-circle artwork. Queue, search, playback,
+The stock SVG loader rasterizes each decoration once at a fixed size: primary
+1280 square, secondary 640 square, glow 256 by 512. GPU textures total 8.4 MiB;
+the existing `images::forget_decoded` helper releases decoded RAM copies after
+upload. Resizing and DPI changes reuse those same textures.
+Three textured quads draw the scene behind page content without
+changing layout or input. Rotation is capped at 12 fps, uses the existing
+power budget, stops while paused/out of focus/saving energy/reducing motion,
+and never creates an independent timer or worker. The artwork follows the
+selected `TrueVision.json` theme and remains visible without album imagery.
+
+This port does not recreate Lucid's browser shader animation, every layout
+option, or every individual shimmer/orbit in the original SVG. Queue, search, playback,
 credentials and Spotify API behaviour remain owned by upstream Spotifast.
 The newer upstream Soloist setup is retained. PC playback through librespot
 can still fail if Spotify refuses audio keys; this presentation does not

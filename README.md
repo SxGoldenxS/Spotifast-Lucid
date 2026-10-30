@@ -1,10 +1,11 @@
 ## Spotifast Lucid (unofficial Windows preview)
 
 An independently maintained Spotifast fork with Lucid-inspired rounded panels,
-an album-art backdrop, the TrueVision palette and a custom blue slime icon.
+an album-art backdrop, Raphael's gold arrays and teal glow, the TrueVision
+palette and a custom blue slime icon.
 
 **[Download for Windows](https://github.com/SxGoldenxS/Spotifast-Lucid/releases/latest)**
- · **[Setup, updates and credits](FORK.md)**
+ · **[Installation guide](INSTALL-LUCID.md)** · **[Updates and credits](FORK.md)**
 
 Spotify Premium, your own Spotify app Client ID and (for Soloist) a personal
 Soloist key are required. No account or keys are included. This preview does

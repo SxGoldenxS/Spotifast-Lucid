@@ -8,6 +8,8 @@ Download the Windows ZIP from [Releases](https://github.com/SxGoldenxS/Spotifast
 check its SHA-256 against `SHA256SUMS.txt`, extract it into a folder you own,
 and run `spotifast.exe`. Windows may identify this unsigned custom build as an
 unknown publisher. No installer or administrator access is needed.
+See the [installation guide](INSTALL-LUCID.md) for sign-in, one-time Soloist
+pairing, the Raphael background, window controls and safe updates.
 
 This fork keeps its settings in `spotifast-data` beside the executable. Keep
 that folder private. Do not send your configured folder to friends: send the
@@ -67,8 +69,11 @@ the upstream CMake, LLVM and vcpkg requirements.
 - **Lucid design reference:** [sanoojes/spicetify-lucid](https://github.com/sanoojes/spicetify-lucid),
   published under AGPL-3.0. This port uses original Rust/egui drawing code;
   Lucid's CSS, React, shaders and artwork are not copied or bundled.
-- **TrueVision palette:** adapted from the project owner's existing
-  TrueVision/Lucid colour customization. Decorative artwork is not included.
+- **Raphael / TrueVision:** palette and geometric array artwork adapted from
+  the project owner's existing TrueVision/Lucid customization. The original
+  transparent SVG geometry is bundled locally in `contrib/lucid/raphael`.
+  Original artwork source/licence was not provided; artwork rights remain
+  with the respective owners and are not offered under the code's MIT licence.
 - **Blue slime icon:** supplied by the project owner and prepared with a
   transparent background. Original artist/source was not provided. Rights to
   the supplied illustration and depicted character remain with their owners;
@@ -82,6 +87,12 @@ the upstream CMake, LLVM and vcpkg requirements.
 
 Rounded glass panels, a matching player, softened track-derived artwork,
 short crossfades, normal custom JSON palettes, and matching app/tray icons.
+The TrueVision theme also draws Raphael's gold arrays and teal glow over the
+album background. Two slow native rotations replace the original browser SVG
+animation; reduced motion, pause and the existing power budget stop rotation.
+Three fixed-size cached textures use about 8.4 MiB of GPU memory in total,
+independent of window resizing. Decoded pixel copies are released after upload.
+Each frame adds only three quads.
 Existing account, queue and playback logic remains upstream-owned. This first
-port does not reproduce every Lucid setting, shader animation or TrueVision's
-decorative circles. MilkDrop is omitted from the first Windows package.
+port does not reproduce every Lucid setting or its browser shader and shimmer
+animations. MilkDrop is omitted from the Windows package.

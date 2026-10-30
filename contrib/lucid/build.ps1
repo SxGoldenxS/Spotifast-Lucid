@@ -42,13 +42,14 @@ try {
         Move-Item -LiteralPath $stagedExe -Destination $exe
     }
     Copy-Item -LiteralPath 'LICENSE' -Destination $out -Force
+    Copy-Item -LiteralPath 'FORK.md','INSTALL-LUCID.md' -Destination $out -Force
     Set-Content -LiteralPath (Join-Path $out 'spotifast-portable.txt') -Value '' -Encoding utf8
     $themes = Join-Path $out 'spotifast-data\config\themes'
     New-Item -ItemType Directory -Force -Path $themes | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'TrueVision.json') -Destination $themes -Force
     $settings = Join-Path $out 'spotifast-data\config\settings.json'
     if (!(Test-Path -LiteralPath $settings)) {
-        Set-Content -LiteralPath $settings -Value '{"theme":"dark","custom_theme":"TrueVision.json"}' -Encoding utf8
+        Set-Content -LiteralPath $settings -Value '{"theme":"dark","custom_theme":"TrueVision.json","custom_titlebar":true}' -Encoding utf8
     }
     Write-Output ('Built: ' + $exe)
     Write-Output ('SHA256: ' + (Get-FileHash -LiteralPath $exe).Hash)

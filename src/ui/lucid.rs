@@ -11,6 +11,10 @@ use crate::{app::App, theme::Palette};
 const ENABLED: bool = cfg!(feature = "lucid");
 const BACKDROP_ID: &str = "lucid-backdrop";
 const FADE_SECONDS: f64 = 0.45;
+const RAPHAEL_CLOCK: &str = "lucid-raphael-clock";
+const PRIMARY: &[u8] = include_bytes!("../../contrib/lucid/raphael/primary.svg");
+const SECONDARY: &[u8] = include_bytes!("../../contrib/lucid/raphael/secondary.svg");
+const GLOW: &[u8] = include_bytes!("../../contrib/lucid/raphael/glow.svg");
 
 /// Preserve the original frame exactly in ordinary upstream builds.
 pub(super) fn panel(frame: Frame, palette: &Palette) -> Frame {
@@ -43,6 +47,143 @@ struct Backdrop {
 /// Signing out must release the previous account's visible artwork.
 pub(super) fn end_session(ctx: &egui::Context) {
     ctx.data_mut(|data| data.remove::<Backdrop>(Id::new(BACKDROP_ID)));
+    ctx.data_mut(|data| data.remove::<DecorationClock>(Id::new(RAPHAEL_CLOCK)));
+}
+
+/// A paused/hidden window must not accrue a jump in decorative animation.
+#[derive(Clone, Default)]
+struct DecorationClock {
+    elapsed: f64,
+    last: f64,
+    running: bool,
+}
+
+impl DecorationClock {
+    fn advance(&mut self, now: f64, running: bool) -> f32 {
+        if self.running && running {
+            self.elapsed += (now - self.last).clamp(0.0, 0.25);
+        }
+        self.last = now;
+        self.running = running;
+        (self.elapsed % 900.0) as f32
+    }
+}
+
+/// The original transparent arrays, behind content but above the panel fill.
+/// Three cached textures and three quads; no SVG parsing or rasterization per
+/// frame, no layout allocation, hit targets, network requests or new settings.
+pub(super) fn raphael(app: &App, ui: &egui::Ui) {
+    if !ENABLED || app.settings.custom_theme.as_deref() != Some("TrueVision.json") {
+        return;
+    }
+    let rect = ui.max_rect();
+    if !ui.is_rect_visible(rect) {
+        return;
+    }
+    let ctx = ui.ctx();
+    let running = app.believed_playing()
+        && !app.motion.reduced()
+        && app.budget == crate::power::Budget::Normal;
+    let now = ui.input(|input| input.time);
+    let seconds = ctx.data_mut(|data| {
+        data.get_temp_mut_or_default::<DecorationClock>(Id::new(RAPHAEL_CLOCK))
+            .advance(now, running)
+    });
+    if running {
+        // These very slow rotations need only 12 frames/s. Paused, hidden,
+        // reduced-motion and energy-saving views schedule no decorative frames.
+        ctx.request_repaint_after(std::time::Duration::from_millis(84));
+    }
+    let painter = ui.painter().with_clip_rect(rect);
+    let scale = (rect.width() / 1280.0).min(rect.height() / 800.0);
+    let square = egui::Vec2::splat(1600.0 * scale);
+    let tint = Color32::WHITE.gamma_multiply(if app.palette.dark { 1.0 } else { 0.45 });
+    decoration(
+        &painter,
+        "bytes://raphael/glow.svg",
+        GLOW,
+        [256, 512],
+        rect,
+        0.0,
+        tint,
+    );
+    decoration(
+        &painter,
+        "bytes://raphael/secondary.svg",
+        SECONDARY,
+        [640, 640],
+        Rect::from_center_size(rect.lerp_inside(egui::vec2(-0.01, 0.63)), square),
+        -seconds * std::f32::consts::TAU / 180.0,
+        tint,
+    );
+    decoration(
+        &painter,
+        "bytes://raphael/primary.svg",
+        PRIMARY,
+        [1280, 1280],
+        Rect::from_center_size(rect.lerp_inside(egui::vec2(0.72, 0.52)), square),
+        seconds * std::f32::consts::TAU / 300.0,
+        tint,
+    );
+}
+
+fn decoration(
+    painter: &egui::Painter,
+    uri: &'static str,
+    bytes: &'static [u8],
+    size: [u32; 2],
+    rect: Rect,
+    angle: f32,
+    tint: Color32,
+) {
+    let ctx = painter.ctx();
+    // Fixed hints bound GPU memory across resizes/DPI changes (8.4 MiB total).
+    let installed = ctx.data_mut(|data| {
+        std::mem::replace(
+            data.get_temp_mut_or_default::<bool>(Id::new("raphael-loaders")),
+            true,
+        )
+    });
+    if !installed {
+        egui_extras::install_image_loaders(ctx);
+    }
+    ctx.include_bytes(uri, bytes);
+    match ctx.try_load_texture(
+        uri,
+        egui::TextureOptions::LINEAR,
+        egui::load::SizeHint::Size {
+            width: size[0],
+            height: size[1],
+            maintain_aspect_ratio: false,
+        },
+    ) {
+        Ok(egui::load::TexturePoll::Ready { texture }) => {
+            // Reuse the existing artwork policy: retain the GPU texture, not
+            // another full decoded copy in RAM. The texture loader caches it.
+            crate::images::forget_decoded(ctx, uri);
+            let mut mesh = egui::Mesh::with_texture(texture.id);
+            mesh.add_rect_with_uv(
+                rect,
+                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                tint,
+            );
+            mesh.rotate(egui::emath::Rot2::from_angle(angle), rect.center());
+            painter.add(mesh);
+        }
+        Ok(egui::load::TexturePoll::Pending { .. }) => {}
+        Err(error) => {
+            let id = Id::new(("raphael-load-error", uri));
+            let reported = ctx.data_mut(|data| {
+                let reported = data.get_temp_mut_or_default::<bool>(id);
+                let previous = *reported;
+                *reported = true;
+                previous
+            });
+            if !reported {
+                log::warn!("Raphael artwork {uri} could not load: {error}");
+            }
+        }
+    }
 }
 
 pub(super) fn background(app: &mut App, ui: &egui::Ui) {
@@ -62,7 +203,8 @@ pub(super) fn background(app: &mut App, ui: &egui::Ui) {
         })
         .flatten();
     let Some(source) = source else {
-        end_session(ui.ctx());
+        ui.ctx()
+            .data_mut(|data| data.remove::<Backdrop>(Id::new(BACKDROP_ID)));
         return;
     };
     let art = app.backend.art().clone();
@@ -133,6 +275,79 @@ fn cover_uv(image: egui::Vec2, target: egui::Vec2) -> Rect {
 mod tests {
     use super::*;
     use egui::vec2;
+
+    #[test]
+    fn decoration_freezes_when_paused_and_does_not_jump_after_a_hidden_window() {
+        let mut clock = DecorationClock::default();
+        assert_eq!(clock.advance(10.0, true), 0.0);
+        assert_eq!(clock.advance(10.125, true), 0.125);
+        assert_eq!(clock.advance(10.25, false), 0.125);
+        assert_eq!(clock.advance(100.0, false), 0.125);
+        assert_eq!(clock.advance(200.0, true), 0.125);
+        assert_eq!(clock.advance(200.125, true), 0.25);
+        assert_eq!(clock.advance(500.0, true), 0.5, "hidden time is bounded");
+    }
+
+    #[test]
+    fn embedded_arrays_render_transparently_without_external_assets() {
+        for bytes in [PRIMARY, SECONDARY, GLOW] {
+            let svg = std::str::from_utf8(bytes).unwrap();
+            for forbidden in ["href=", "<script", "<image", "<animate", "<foreignObject"] {
+                assert!(
+                    !svg.contains(forbidden),
+                    "embedded artwork must be self-contained"
+                );
+            }
+            let image = egui_extras::image::load_svg_bytes_with_size(
+                bytes,
+                egui::load::SizeHint::Width(128),
+                &Default::default(),
+            )
+            .unwrap();
+            assert!(image.pixels.iter().any(|pixel| pixel.a() > 0));
+            assert!(image.pixels.iter().any(|pixel| pixel.a() == 0));
+        }
+    }
+
+    #[test]
+    fn resizing_reuses_the_decoration_texture_instead_of_allocating_another() {
+        let ctx = egui::Context::default();
+        for (width, uploads) in [(760.0, 1), (1280.0, 0), (1920.0, 0)] {
+            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                decoration(
+                    ui.painter(),
+                    "bytes://raphael/cache-test.svg",
+                    PRIMARY,
+                    [128, 128],
+                    Rect::from_min_size(pos2(0.0, 0.0), vec2(width, 800.0)),
+                    0.0,
+                    Color32::WHITE,
+                );
+            });
+            // The font atlas is unrelated to the backdrop's texture cache.
+            assert_eq!(
+                output
+                    .textures_delta
+                    .set
+                    .values()
+                    .flat_map(|deltas| deltas.iter())
+                    .filter(|delta| delta.image.size() == [128, 128])
+                    .count(),
+                uploads
+            );
+            assert_eq!(
+                ctx.loaders()
+                    .image
+                    .lock()
+                    .iter()
+                    .map(|loader| loader.byte_size())
+                    .sum::<usize>(),
+                0,
+                "uploaded decoration pixels must not remain duplicated in RAM"
+            );
+            output.textures_delta.clear();
+        }
+    }
 
     #[test]
     fn truevision_uses_the_standard_palette_format() {
