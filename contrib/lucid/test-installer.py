@@ -41,7 +41,7 @@ class InstallerTest(unittest.TestCase):
         source = cls.root / "fixture.c"
         source.write_text(r'''
 #include <windows.h>
-#if VARIANT == 1
+#if FIXTURE_VARIANT == 1
 #define FIXTURE_TEXT "fixture-one"
 #else
 #define FIXTURE_TEXT "fixture-two"
@@ -60,7 +60,7 @@ int wmain(int argc, wchar_t **argv) {
         cls.payloads, cls.setups = [], []
         for variant in (1, 2):
             payload = cls.root / f"payload-{variant}.exe"
-            subprocess.run(["cl", "/nologo", "/O1", "/MT", f"/DVARIANT={variant}",
+            subprocess.run(["cl", "/nologo", "/O1", "/MT", f"/DFIXTURE_VARIANT={variant}",
                             f"/Fe:{payload}", f"/Fo:{cls.root / f'fixture-{variant}.obj'}", str(source)],
                            check=True, timeout=90)
             version = f"0.4.{variant - 1}"
