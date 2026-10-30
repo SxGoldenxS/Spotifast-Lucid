@@ -1,6 +1,11 @@
 name: Lucid Windows
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Package version for a manual build
+        required: true
+        default: '0.4.0'
   push:
     tags: ['lucid-v*']
 permissions:
@@ -17,24 +22,33 @@ jobs:
       - name: Check and build Lucid
         shell: pwsh
         run: ./contrib/lucid/build.ps1
-      - name: Package clean portable download
+      - name: Test native installer safety
         shell: pwsh
         run: |
-          $name = 'Spotifast-Lucid-Windows-x64'
-          $stage = Join-Path $env:RUNNER_TEMP $name
-          New-Item -ItemType Directory -Path "$stage/spotifast-data/config/themes" -Force | Out-Null
-          Copy-Item dist/Spotifast-Lucid/spotifast.exe, dist/Spotifast-Lucid/spotifast-portable.txt, LICENSE, FORK.md, INSTALL-LUCID.md $stage
-          Copy-Item contrib/lucid/TrueVision.json, contrib/lucid/GreatSage.json "$stage/spotifast-data/config/themes/"
-          Set-Content "$stage/spotifast-data/config/settings.json" '{"theme":"dark","custom_theme":"TrueVision.json","custom_titlebar":true}' -Encoding utf8
-          Compress-Archive -LiteralPath $stage -DestinationPath "$name.zip"
-          $hash = (Get-FileHash "$name.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
-          Set-Content SHA256SUMS.txt "$hash  $name.zip" -Encoding ascii
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (!$iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          "ISCC_PATH=$iscc" >> $env:GITHUB_ENV
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          & (Join-Path $vs 'Common7\Tools\Launch-VsDevShell.ps1') -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          python contrib/lucid/test-installer.py $iscc
+          if ($LASTEXITCODE -ne 0) { throw 'Installer safety checks failed.' }
+      - name: Package installer and clean portable ZIP
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          $version = $env:PACKAGE_VERSION
+          if (!$version) { $version = $env:GITHUB_REF_NAME -replace '^lucid-v','' }
+          ./contrib/lucid/package.ps1 -Version $version -Iscc $env:ISCC_PATH
       - uses: actions/upload-artifact@v4
         with:
           name: Spotifast-Lucid-Windows-x64
           path: |
-            Spotifast-Lucid-Windows-x64.zip
-            SHA256SUMS.txt
+            dist/Installers/Spotifast-Lucid-Windows-x64.zip
+            dist/Installers/*-Setup.exe
+            dist/Installers/SHA256SUMS.txt
+          if-no-files-found: error
       - name: Publish tagged preview
         if: startsWith(github.ref, 'refs/tags/lucid-v')
         shell: pwsh
@@ -43,4 +57,5 @@ jobs:
         run: |
           $notes = "contrib/lucid/RELEASE-$env:GITHUB_REF_NAME.md"
           if (!(Test-Path -LiteralPath $notes)) { $notes = 'FORK.md' }
-          gh release create $env:GITHUB_REF_NAME Spotifast-Lucid-Windows-x64.zip SHA256SUMS.txt --title "Spotifast Lucid $env:GITHUB_REF_NAME" --notes-file $notes
+          $assets = Get-ChildItem -LiteralPath dist/Installers -File | Where-Object { $_.Name -match '\.zip$|-Setup\.exe$|^SHA256SUMS\.txt$' } | Select-Object -ExpandProperty FullName
+          gh release create $env:GITHUB_REF_NAME @assets --title "Spotifast Lucid $env:GITHUB_REF_NAME" --notes-file $notes

@@ -1,0 +1,27 @@
+SPOTIFAST LUCID
+
+Start Spotifast Lucid from the Start menu or desktop shortcut.
+
+Follow the app's sign-in instructions to create your own Spotify developer
+app and enter its Client ID. Spotify Premium is required.
+
+Choose Set up Soloist, get your personal key from the linked Spotify page,
+then Download and enable Soloist. Once, open official Spotify on the same
+account/network and select the exact Spotifast Soloist device shown in setup.
+If it is missing, fully quit and reopen official Spotify to refresh discovery.
+Return to Spotifast and choose Start listening. Official Spotify can now close.
+
+Themes: Settings > Appearance > Theme.
+TrueVision is gold Raphael. GreatSage is the separate blue variant.
+
+To update, fully quit Spotifast with Ctrl+Q, then run the newer installer.
+Settings, keys, Soloist pairing and customised palettes are retained.
+Uninstall from Windows Settings > Apps. Your profile is kept for reinstall.
+Do not send your configured app folder or keys to friends; send the installer.
+
+Credits: Spotifast by crmne and contributors (MIT); Lucid design reference by
+sanoojes (AGPL-3.0); owner-supplied Raphael / TrueVision geometry and slime icon;
+Spotify Soloist by Spotify AB. Installer engine: Inno Setup by Jordan Russell
+and Martijn Laan. This fork is unofficial. See FORK.md for full attribution.
+
+Full guide: https://github.com/SxGoldenxS/Spotifast-Lucid/blob/main/INSTALL-LUCID.md

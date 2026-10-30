@@ -1,10 +1,11 @@
 # Install Spotifast Lucid / Raphael on Windows
 
-1. Download **Spotifast-Lucid-Windows-x64.zip** from
+1. Download the **Windows x64 Setup.exe** from
    [the latest release](https://github.com/SxGoldenxS/Spotifast-Lucid/releases/latest).
    Optionally compare its SHA-256 with the supplied `SHA256SUMS.txt`.
-2. Extract the entire ZIP to a folder you own. Run `spotifast.exe` inside it.
-   This is an unsigned Windows x64 portable app, with no installer or admin requirement.
+2. Run Setup, choose the install folder and optional desktop shortcut, then
+   launch **Spotifast Lucid** from the Start menu. It installs for your Windows
+   account without administrator rights. This custom build is unsigned.
 3. Follow Spotifast's sign-in instructions to create your own free Spotify
    developer app. Enable Web API and set its redirect URI to
    `http://127.0.0.1:8989/login`. Enter its **Client ID** in Spotifast and sign in.
@@ -18,11 +19,15 @@
 
 You can now close official Spotify. Spotifast starts its managed Soloist player
 automatically and restores the saved pairing on later launches. Soloist comes
-directly from Spotify; it is not bundled or redistributed in this ZIP.
+directly from Spotify; it is not bundled or redistributed in either download.
+
+For a portable copy, download **Spotifast-Lucid-Windows-x64.zip** instead,
+extract the entire ZIP to a folder you own, and run `spotifast.exe` inside it.
+Both downloads contain the same self-contained Rust application.
 
 ## Theme and window
 
-The ZIP selects **TrueVision**, the gold/ivory Raphael theme, by default.
+Fresh installs select **TrueVision**, the gold/ivory Raphael theme, by default.
 Its transparent gold arrays, teal glow and changing album background appear
 on the main page. **Settings → Appearance → Colour from album art** controls
 the album imagery; the decorative arrays also work with that setting off.
@@ -34,7 +39,7 @@ Both keep the same album backgrounds and slow rotation behaviour.
 Use this fork for the decorative background; copying its palette into stock
 Spotifast changes colours only.
 
-Fresh release ZIPs also select integrated window controls. Use **Settings →
+Fresh installs also select integrated window controls. Use **Settings →
 Appearance → Custom title bar** to change that choice. Drag empty space in the
 top header to move the window. The choice is
 saved. Search settings for the setting's name if it is not visible.
@@ -46,6 +51,21 @@ resizing does not create a growing set of textures. No browser or new service
 is added.
 
 ## Update or share
+
+For an installed copy, fully quit Spotifast with **Ctrl+Q** and run the newer
+Setup.exe. Keep the same install folder. The installer updates program files
+and adds missing themes while retaining settings, pairing and edited palettes.
+It asks you to quit before updating a running copy, and never force-closes it.
+
+To convert an existing portable copy, choose its existing folder in Setup,
+the folder containing `spotifast-data`. Its profile stays in place. Setup
+creates a Start menu entry for the installed `spotifast.exe`.
+
+Uninstall through **Windows Settings → Apps → Spotifast Lucid**. Program files
+and installer-created shortcuts are removed; your `spotifast-data` profile
+and marker are kept so reinstall can restore your setup.
+
+For a portable copy:
 
 Quit Spotifast completely with **Ctrl+Q**. Back up the old executable and
 replace only `spotifast.exe` with the one from the new ZIP. Keep your existing

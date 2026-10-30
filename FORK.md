@@ -4,7 +4,12 @@ An unofficial Windows preview maintained by [SxGoldenxS](https://github.com/SxGo
 
 ## Download and run
 
-Download the Windows ZIP from [Releases](https://github.com/SxGoldenxS/Spotifast-Lucid/releases/latest),
+For easy setup, run the [Windows installer](https://github.com/SxGoldenxS/Spotifast-Lucid/releases/latest/download/Spotifast-Lucid-Windows-x64-Setup.exe).
+It installs for the current user, adds a Start menu entry and offers a desktop
+shortcut. Updates preserve the profile and customised palettes. Uninstall
+removes program files and shortcuts but keeps the profile for reinstall.
+
+Alternatively, download the Windows ZIP from [Releases](https://github.com/SxGoldenxS/Spotifast-Lucid/releases/latest),
 check its SHA-256 against `SHA256SUMS.txt`, extract it into a folder you own,
 and run `spotifast.exe`. Windows may identify this unsigned custom build as an
 unknown publisher. No installer or administrator access is needed.
@@ -38,6 +43,7 @@ changing theme settings does not fix that Spotify-side refusal.
 For a downloaded copy, close Spotifast completely, retain a backup of the old
 executable, and replace only `spotifast.exe` from the new release. Keep your
 existing `spotifast-data` folder. Never overwrite it with another person's.
+An installed copy can instead rerun the newer installer in the same folder.
 The official binary updater is blocked in Lucid builds so it cannot silently
 remove the port. Download new Lucid versions from this fork's Releases page.
 
@@ -84,6 +90,9 @@ the upstream CMake, LLVM and vcpkg requirements.
   upstream dependencies retain their respective licences and acknowledgements.
 - **Spotify/Soloist:** Spotify AB. This fork is not affiliated with or
   endorsed by Spotify. Spotify's player is downloaded directly from Spotify.
+- **Installer engine:** [Inno Setup](https://jrsoftware.org/isinfo.php),
+  Jordan Russell and Martijn Laan. It runs only during setup/uninstall and
+  adds no service, browser or runtime dependency to the Rust application.
 
 ## Preview scope
 

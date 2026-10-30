@@ -49,7 +49,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'TrueVision.json'),(Join-Path $PSScriptRoot 'GreatSage.json') -Destination $themes -Force
     $settings = Join-Path $out 'spotifast-data\config\settings.json'
     if (!(Test-Path -LiteralPath $settings)) {
-        Set-Content -LiteralPath $settings -Value '{"theme":"dark","custom_theme":"TrueVision.json","custom_titlebar":true}' -Encoding utf8
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'default-settings.json') -Destination $settings
     }
     Write-Output ('Built: ' + $exe)
     Write-Output ('SHA256: ' + (Get-FileHash -LiteralPath $exe).Hash)

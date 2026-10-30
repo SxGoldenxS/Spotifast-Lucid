@@ -6,6 +6,7 @@ palette and a custom blue slime icon.
 Includes a separate navy/azure **Great Sage** theme, selectable in Appearance.
 
 **[Download for Windows](https://github.com/SxGoldenxS/Spotifast-Lucid/releases/latest)**
+ · **[Easy installer](https://github.com/SxGoldenxS/Spotifast-Lucid/releases/latest/download/Spotifast-Lucid-Windows-x64-Setup.exe)**
  · **[Installation guide](INSTALL-LUCID.md)** · **[Updates and credits](FORK.md)**
 
 Spotify Premium, your own Spotify app Client ID and (for Soloist) a personal

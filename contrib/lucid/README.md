@@ -55,6 +55,31 @@ The custom build blocks the stock binary updater, which would remove this
 port. Update this checkout instead. Upstream builds without `--features lucid`
 retain their original UI and updater.
 
+## Packaging the lightweight installer
+
+With Inno Setup 6.3+ available on the build machine, after a production build:
+
+```powershell
+./contrib/lucid/package.ps1 -Version 0.4.0
+```
+
+This creates a clean portable ZIP, a native per-user Setup.exe and checksums
+under `dist/Installers`. The installer carries the same self-contained Rust
+binary. It writes no shared Spotify protocol associations, installs no service
+or prerequisites, and uses the existing portable profile layout in its own
+install folder. A stable AppId supports later upgrades. Existing settings and
+palettes are not overwritten; all profile files survive uninstall. A running
+copy in the selected folder blocks update/uninstall rather than being killed.
+An original Spotifast installer folder is refused to keep profiles separate.
+
+`windows-installer.iss` lists every bundled file explicitly. No configured
+profile or recursive payload directory can enter the installer. Native tests
+in `test-installer.py` compile this same script with isolated app identities
+and harmless C payloads, checking install, update, shortcuts, lock handling,
+profile preservation, uninstall and reinstall. The Windows release workflow
+runs them before packaging both downloads. The bootstrap workflow packages
+the unchanged, checksum-verified 0.3.0 Rust payload for installer-only 0.4.0.
+
 ## Scope and provenance
 
 The design references [Lucid](https://github.com/sanoojes/spicetify-lucid).

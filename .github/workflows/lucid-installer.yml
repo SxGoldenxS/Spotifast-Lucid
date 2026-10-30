@@ -1,0 +1,50 @@
+name: Lucid installer bootstrap
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      # This installer-only release reuses the verified 0.3.0 application.
+      # Future application updates use lucid-windows.yml to build from source.
+      PACKAGE_VERSION: '0.4.0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate preinstalled build tools
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (!$iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (!(Test-Path -LiteralPath $iscc)) { throw 'The runner must include Inno Setup.' }
+          "ISCC_PATH=$iscc" >> $env:GITHUB_ENV
+      - name: Test native install, updates and uninstall with isolated fixtures
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          & (Join-Path $vs 'Common7\Tools\Launch-VsDevShell.ps1') -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          python contrib/lucid/test-installer.py $env:ISCC_PATH
+          if ($LASTEXITCODE -ne 0) { throw 'Installer safety checks failed.' }
+      - name: Fetch the unchanged, previously tested Rust payload
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'payload.zip'
+          Invoke-WebRequest 'https://github.com/SxGoldenxS/Spotifast-Lucid/releases/download/lucid-v0.3.0/Spotifast-Lucid-Windows-x64.zip' -OutFile $zip
+          if ((Get-FileHash $zip).Hash.ToLowerInvariant() -ne '2eb642e96cf4bf6e3f849e5d05595472f25a577c13249e9d0a1d95aa01f494c3') { throw 'Payload archive verification failed.' }
+          Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $env:RUNNER_TEMP 'payload')
+      - name: Package installer and clean portable ZIP
+        shell: pwsh
+        run: |
+          $binary = Join-Path $env:RUNNER_TEMP 'payload/Spotifast-Lucid-Windows-x64/spotifast.exe'
+          if ((Get-FileHash $binary).Hash.ToLowerInvariant() -ne 'e7ef0916e2f4f8ca60f823f149cb6d92fe5a44d7a59f029f5d08954dfef8683a') { throw 'Payload executable verification failed.' }
+          ./contrib/lucid/package.ps1 -Version $env:PACKAGE_VERSION -Binary $binary -Iscc $env:ISCC_PATH
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Spotifast-Lucid-Installer
+          path: |
+            dist/Installers/*-Setup.exe
+            dist/Installers/Spotifast-Lucid-Windows-x64.zip
+            dist/Installers/SHA256SUMS.txt
+          if-no-files-found: error
