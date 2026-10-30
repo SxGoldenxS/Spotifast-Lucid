@@ -1,3 +1,15 @@
+## Spotifast Lucid (unofficial Windows preview)
+
+An independently maintained Spotifast fork with Lucid-inspired rounded panels,
+an album-art backdrop, the TrueVision palette and a custom blue slime icon.
+
+**[Download for Windows](https://github.com/SxGoldenxS/Spotifast-Lucid/releases/latest)**
+ · **[Setup, updates and credits](FORK.md)**
+
+Spotify Premium, your own Spotify app Client ID and (for Soloist) a personal
+Soloist key are required. No account or keys are included. This preview does
+not include MilkDrop. The original Spotifast project and documentation follow.
+
 <p align="center">
   <img src="docs/assets/images/logo.svg" alt="Spotifast logo" width="88" height="88">
 </p>

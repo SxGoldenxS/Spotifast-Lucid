@@ -13,3 +13,5 @@ docs/.bundle/
 /.cache/
 
 /dist/
+/spotifast-data/
+/PROJECT_MEMORY.md

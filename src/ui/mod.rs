@@ -11,6 +11,7 @@ pub mod home;
 mod keys;
 pub mod library;
 pub mod login;
+mod lucid;
 mod lyrics;
 pub mod new_releases;
 pub mod player_bar;
@@ -46,6 +47,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let connecting = matches!(app.auth, AuthStatus::Connecting | AuthStatus::Starting)
         || (app.is_connected() && app.user.is_none());
     if !signed_in {
+        lucid::end_session(ctx);
         player_bar::end_tint_session(ctx);
         login::show(app, ui, connecting);
         update::show(app, ctx);
@@ -90,6 +92,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ),
         );
     }
+    lucid::background(app, ui);
     player_bar::show(app, ui);
     if app.lyrics_fullscreen.is_some() {
         lyrics::fullscreen(app, ui);
@@ -304,7 +307,7 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
     let tint = page_tint(app);
     egui::CentralPanel::default()
-        .frame(Frame::new().fill(palette.window))
+        .frame(lucid::panel(Frame::new().fill(palette.window), &palette))
         .show(ui, |ui| {
             let rect = ui.max_rect();
             let page = app.page().clone();
@@ -320,7 +323,9 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                 .ctx()
                 .data(|data| data.get_temp::<f32>(scrolled_id))
                 .unwrap_or(0.0);
-            if let Some((top, bottom)) = header_wash(&palette, overview, tint) {
+            if !cfg!(feature = "lucid")
+                && let Some((top, bottom)) = header_wash(&palette, overview, tint)
+            {
                 widgets::paint_vertical_gradient(ui, header_rect(rect, scrolled), top, bottom);
             }
             ui.spacing_mut().item_spacing = vec2(8.0, 6.0);

@@ -213,6 +213,13 @@ pub fn open_spotify_url(uri: &str) -> Option<String> {
 /// out. macOS template images use only the alpha channel and paint the
 /// shape themselves, black in a light menu bar and white in a dark one.
 pub fn tray_template_rgba(size: usize) -> Vec<u8> {
+    if cfg!(feature = "lucid") {
+        let mut rgba = app_icon_rgba(size);
+        for pixel in rgba.as_chunks_mut::<4>().0 {
+            pixel[..3].fill(0);
+        }
+        return rgba;
+    }
     let mut rgba = mark_rgba(size, false);
     for pixel in rgba.as_chunks_mut::<4>().0 {
         // The triangle is the dark colour; make it a hole instead.
@@ -232,6 +239,26 @@ pub fn tray_template_rgba(size: usize) -> Vec<u8> {
 /// It is the polished disc of `packaging/icons` at every size: a darker rim
 /// around a lit face.
 pub fn app_icon_rgba(size: usize) -> Vec<u8> {
+    if cfg!(feature = "lucid") {
+        static SOURCE: std::sync::OnceLock<image::RgbaImage> = std::sync::OnceLock::new();
+        let source = SOURCE.get_or_init(|| {
+            image::load_from_memory(include_bytes!("../contrib/lucid/slime.png"))
+                .expect("bundled slime icon must be a valid PNG")
+                .into_rgba8()
+        });
+        let side = size as u32;
+        if side == 0 {
+            return Vec::new();
+        }
+        let scaled = image::DynamicImage::ImageRgba8(source.clone())
+            .resize(side, side, image::imageops::FilterType::Lanczos3)
+            .into_rgba8();
+        let mut canvas = image::RgbaImage::new(side, side);
+        let x = (side - scaled.width()) / 2;
+        let y = (side - scaled.height()) / 2;
+        image::imageops::overlay(&mut canvas, &scaled, i64::from(x), i64::from(y));
+        return canvas.into_raw();
+    }
     mark_rgba(size, true)
 }
 
@@ -380,9 +407,32 @@ mod tests {
         ]
     }
 
+    #[cfg(feature = "lucid")]
+    #[test]
+    fn slime_icon_and_tray_keep_transparent_corners_and_matching_silhouettes() {
+        for size in [16, 32, 128, 256] {
+            let icon = app_icon_rgba(size);
+            let template = tray_template_rgba(size);
+            assert_eq!(icon.len(), size * size * 4);
+            assert_eq!(pixel(&icon, size, 0, 0)[3], 0);
+            let centre = pixel(&icon, size, size / 2, size / 2);
+            assert!(centre[2] > centre[0] && centre[3] > 240);
+            for (colour, mono) in icon
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(template.as_chunks::<4>().0)
+            {
+                assert_eq!(colour[3], mono[3]);
+                assert_eq!(&mono[..3], &[0, 0, 0]);
+            }
+        }
+    }
+
     /// The icon wears the polished disc at every size, and the tray
     /// template keeps its punched-out triangle.
     #[test]
+    #[cfg(not(feature = "lucid"))]
     fn the_icon_is_polished_at_every_size() {
         // #given the icon at a dock size and at a tray size
         let (large, small) = (app_icon_rgba(128), app_icon_rgba(32));

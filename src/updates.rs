@@ -35,6 +35,13 @@ pub const CONFIG: UpdateConfig = UpdateConfig {
 
 /// An updater on Spotifast's HTTP client, through the configured proxy.
 pub fn updater(proxy: &crate::settings::ProxyConfig) -> anyhow::Result<Updater> {
+    // Stock binaries would erase the local presentation. Rebuild this copy
+    // from upstream with contrib/lucid/update.ps1 instead.
+    if cfg!(feature = "lucid") {
+        anyhow::bail!(
+            "This Lucid build uses manual updates. Download new versions from https://github.com/SxGoldenxS/Spotifast-Lucid/releases."
+        );
+    }
     let builder = crate::http::blocking_builder(proxy).map_err(anyhow::Error::msg)?;
     Ok(Updater::new(CONFIG, ReqwestTransport::new(builder)?))
 }
@@ -42,6 +49,19 @@ pub fn updater(proxy: &crate::settings::ProxyConfig) -> anyhow::Result<Updater> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "lucid")]
+    #[test]
+    fn lucid_build_cannot_replace_itself_with_a_stock_update() {
+        let result = updater(&crate::settings::ProxyConfig::default());
+        assert!(
+            result
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("SxGoldenxS/Spotifast-Lucid/releases")
+        );
+    }
 
     #[test]
     fn update_config_is_valid() {

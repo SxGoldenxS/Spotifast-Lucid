@@ -256,6 +256,8 @@ winresource = "0.1"
 
 [features]
 default = ["milkdrop"]
+# Local Lucid-inspired presentation. No playback or settings schema changes.
+lucid = []
 # Maintainer audition builds. Native capture follows Soloist volume; this is
 # deliberately not enabled in stable builds until that behavior is settled.
 soloist-preview = ["dep:cc"]

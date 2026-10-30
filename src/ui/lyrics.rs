@@ -47,11 +47,12 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         .default_size(app.settings.lyrics_width)
         .size_range(fit.range.clone())
         .show_separator_line(false)
-        .frame(
+        .frame(super::lucid::panel(
             Frame::new()
                 .fill(palette.panel)
                 .inner_margin(Margin::symmetric(12, 12)),
-        );
+            &palette,
+        ));
     let response = panel.show(ui, |ui| {
         let window_controls = super::window_controls_reservation(
             ui.ctx(),

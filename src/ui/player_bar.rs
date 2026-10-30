@@ -50,11 +50,12 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         .exact_size(theme::PLAYER_BAR_HEIGHT)
         .resizable(false)
         .show_separator_line(false)
-        .frame(
+        .frame(super::lucid::panel(
             Frame::new()
                 .fill(fill)
                 .inner_margin(Margin::symmetric(16, 0)),
-        )
+            &palette,
+        ))
         .show(ui, |ui| {
             let rect = ui.max_rect();
             let now = app.now_playing();
