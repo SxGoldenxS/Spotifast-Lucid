@@ -60,7 +60,7 @@ retain their original UI and updater.
 With Inno Setup 6.3+ available on the build machine, after a production build:
 
 ```powershell
-./contrib/lucid/package.ps1 -Version 0.5.0
+./contrib/lucid/package.ps1 -Version 0.6.0
 ```
 
 This creates a clean portable ZIP, a native per-user Setup.exe and checksums
@@ -115,3 +115,24 @@ credentials and Spotify API behaviour remain owned by upstream Spotifast.
 The newer upstream Soloist setup is retained. PC playback through librespot
 can still fail if Spotify refuses audio keys; this presentation does not
 change Spotify's authorization decisions.
+
+
+## Native timed lyrics
+
+`src/lyrics/timed.rs` owns bounded parsing, validation and atomic per-track
+imports. `src/lyrics.rs` extends the backward-compatible lyric model with
+optional word timings and line ends. Backend workers handle disk operations;
+request generations prevent a late provider response from undoing an import.
+The native UI recolours the existing shaped glyph mesh, preserving wrapping
+and Unicode text shaping. It borrows the lyrics document each frame instead
+of copying it. Only visible active words animate, capped at 30 fps while
+focused and playing. Hidden/paused views have no word animation timer;
+reduced motion and energy saving use discrete timed highlighting. No browser,
+extra worker, shader or new transitive dependency is added. The direct XML
+parser dependency reuses roxmltree 0.20 already in the SVG rendering stack.
+
+The first stage supports local files, not Spicy's hosted catalogue. Future
+catalogue integration must use its documented third-party API with an
+appropriate publishable key and provider/community attribution. Never bundle
+a secret key, use the protected demo as a production endpoint or implicitly
+forward a Spotify access token. See `INSTALL-LUCID.md` and `FORK.md`.

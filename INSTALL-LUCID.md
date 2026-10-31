@@ -59,6 +59,44 @@ Spotify fully closed. DJ narration and long sessions have not been independently
 verified. Availability depends on Spotify, your account and region. This does
 not add an experimental librespot patch, another service or a new dependency.
 
+## Word highlighting and full-screen lyrics
+
+Open the player's Lyrics panel and use its **Lyrics options** (ellipsis) menu
+then **Import lyrics file...**. Choose a UTF-8 `.ttml`, `.lrc` or `.txt` file for
+the song currently shown. Open **Full screen lyrics** to keep the cover and
+player beside the words. In full screen, right-click the **Lyrics** heading
+to reach the same import menu. Click a timed line to seek; **Follow** resumes
+automatic scrolling after you scroll by hand.
+
+Word or syllable timings in TTML or enhanced LRC light up in your theme's
+accent colour as the song plays. Ordinary Spotify/LRCLIB and LRC lyrics keep
+line highlighting; plain text stays readable. The app does not invent word
+timings from line timings. For example, an enhanced LRC line is:
+
+```text
+[00:10]<00:10>Hello <00:11>world<00:12>
+```
+
+The last marker is the last word's end, not an extra word. Without it, a
+following line can supply the end. A final line without an end keeps line
+highlighting. TTML accepts decimal clock/offset times, standard parent-relative
+timing and Apple-style absolute `itunes:timing` profiles. Lead vocals are
+supported first; backing vocals, translations, duet layouts, frame/tick clocks
+and TTML styling are not part of this first version. Invalid files show an
+error and leave the previous lyrics in place. Imports are limited to 2 MiB.
+
+Imports stay private in this copy's `spotifast-data/config/lyrics` folder,
+matched to that song's Spotify URI. They survive restart and upgrades; the
+original file is unchanged. **Use online lyrics** removes only the app's
+imported copy and resumes normal source lookup. Nothing is uploaded.
+
+This is an independent native first stage inspired by
+[Spikerko's Spicy Lyrics](https://github.com/Spikerko/spicy-lyrics), not its
+Spicetify extension running inside Spotifast. Automatic access to Spicy's
+hosted catalogue is not included. Its separate third-party API requires a
+configured publishable key; no Spotify token is forwarded to that service.
+No new account, key, web engine or background service is needed for imports.
+
 ## Theme and window
 
 Fresh installs select **TrueVision**, the gold/ivory Raphael theme, by default.

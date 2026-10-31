@@ -91,6 +91,11 @@ the upstream CMake, LLVM and vcpkg requirements.
   transparent background. Original artist/source was not provided. Rights to
   the supplied illustration and depicted character remain with their owners;
   the icon is not offered under the code's MIT licence.
+- **Spicy Lyrics design reference:** [Spikerko/spicy-lyrics](https://github.com/Spikerko/spicy-lyrics),
+  AGPL-3.0. Native timed-word rendering and TTML/enhanced-LRC parsing are an
+  independent Rust implementation. No extension TypeScript/CSS is copied or
+  bundled. Spicy's hosted catalogue and services have separate access terms
+  and are not included. See the [lyrics guide](INSTALL-LUCID.md#word-highlighting-and-full-screen-lyrics).
 - **Dependencies:** librespot, egui, fastframe, Inter, Lucide and the other
   upstream dependencies retain their respective licences and acknowledgements.
 - **Spotify/Soloist:** Spotify AB. This fork is not affiliated with or

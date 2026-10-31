@@ -113,6 +113,11 @@ impl AppDirs {
         self.config.join("skins")
     }
 
+    /// Private, durable lyric files imported for individual recordings.
+    pub fn lyrics_overrides_dir(&self) -> PathBuf {
+        self.config.join("lyrics")
+    }
+
     /// MilkDrop presets, as `.milk` files, in folders or not, with any
     /// textures they use in a `textures` folder inside.
     pub fn milkdrop_dir(&self) -> PathBuf {

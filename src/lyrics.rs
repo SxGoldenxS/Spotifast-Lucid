@@ -16,6 +16,8 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 
+pub mod timed;
+
 const API: &str = "https://lrclib.net/api";
 /// Lyrics do not change; a cached answer is good for this long.
 const CACHE_LIFETIME: Duration = Duration::from_secs(30 * 24 * 60 * 60);
@@ -46,6 +48,20 @@ pub struct Line {
     /// When the line starts; `None` in lyrics that carry no timing.
     pub at_ms: Option<u32>,
     pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_ms: Option<u32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub words: Vec<Word>,
+}
+
+/// A timed word or syllable in the line's original UTF-8 text. Byte ranges
+/// preserve shaping and bidirectional layout instead of laying words out apart.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Word {
+    pub start_ms: u32,
+    pub end_ms: u32,
+    pub byte_start: usize,
+    pub byte_end: usize,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -55,6 +71,9 @@ pub struct Lyrics {
     pub synced: bool,
     /// The database knows there are no words.
     pub instrumental: bool,
+    /// Runtime provenance; imported files are durable, not a provider cache.
+    #[serde(skip)]
+    pub imported: bool,
 }
 
 impl Lyrics {
@@ -67,7 +86,11 @@ impl Lyrics {
         let started = self
             .lines
             .partition_point(|line| line.at_ms.is_some_and(|at| at <= position_ms));
-        started.checked_sub(1)
+        started.checked_sub(1).filter(|index| {
+            self.lines[*index]
+                .end_ms
+                .is_none_or(|end| position_ms < end)
+        })
     }
 }
 
@@ -96,6 +119,7 @@ pub fn from_spotify(json: &serde_json::Value) -> Option<Lyrics> {
             Some(Line {
                 at_ms,
                 text: text.to_string(),
+                ..Default::default()
             })
         })
         .collect();
@@ -107,6 +131,7 @@ pub fn from_spotify(json: &serde_json::Value) -> Option<Lyrics> {
         lines,
         synced,
         instrumental: false,
+        ..Default::default()
     })
 }
 
@@ -343,6 +368,7 @@ impl Record {
                     lines,
                     synced: true,
                     instrumental: false,
+                    ..Default::default()
                 });
             }
         }
@@ -353,10 +379,12 @@ impl Record {
                 .map(|line| Line {
                     at_ms: None,
                     text: line.trim_end().to_string(),
+                    ..Default::default()
                 })
                 .collect(),
             synced: false,
             instrumental: false,
+            ..Default::default()
         })
     }
 }
@@ -641,6 +669,7 @@ pub fn from_text(text: &str) -> Option<Lyrics> {
             lines: timed,
             synced: true,
             instrumental: false,
+            ..Default::default()
         });
     }
     Some(Lyrics {
@@ -650,10 +679,12 @@ pub fn from_text(text: &str) -> Option<Lyrics> {
             .map(|line| Line {
                 at_ms: None,
                 text: line.trim_end().to_string(),
+                ..Default::default()
             })
             .collect(),
         synced: false,
         instrumental: false,
+        ..Default::default()
     })
 }
 
@@ -675,14 +706,13 @@ pub fn parse_lrc(text: &str) -> Vec<Line> {
             continue;
         }
         let body = rest.trim();
+        let base_ms = times[0];
         for at_ms in times {
-            lines.push(Line {
-                at_ms: Some(at_ms),
-                text: body.to_string(),
-            });
+            lines.push(timed::lrc_line(body, at_ms, base_ms));
         }
     }
     lines.sort_by_key(|line| line.at_ms);
+    timed::finish_lrc(&mut lines);
     lines
 }
 
@@ -706,7 +736,16 @@ fn leading_stamp(text: &str) -> Option<(u32, usize)> {
         Some(_) => return None,
         None => 0,
     };
-    Some((minutes * 60_000 + seconds * 1_000 + fraction_ms, close + 2))
+    if seconds >= 60 {
+        return None;
+    }
+    Some((
+        minutes
+            .checked_mul(60_000)?
+            .checked_add(seconds * 1_000)?
+            .checked_add(fraction_ms)?,
+        close + 2,
+    ))
 }
 
 // ---- cache ------------------------------------------------------------------
@@ -1047,6 +1086,7 @@ mod tests {
             lines: parse_lrc("[00:05]a\n[00:10]b\n[00:15]c"),
             synced: true,
             instrumental: false,
+            ..Default::default()
         };
         assert_eq!(lyrics.active_line(0), None);
         assert_eq!(lyrics.active_line(5_000), Some(0));
@@ -1056,6 +1096,7 @@ mod tests {
             lines: vec![Line::default()],
             synced: false,
             instrumental: false,
+            ..Default::default()
         };
         assert_eq!(plain.active_line(5_000), None);
     }

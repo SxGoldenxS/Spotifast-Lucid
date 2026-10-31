@@ -602,6 +602,8 @@ pub struct App {
     pub lyrics_uri: Option<String>,
     /// `Loaded(None)` when no lyrics are available.
     pub lyrics: Loadable<Option<crate::lyrics::Lyrics>>,
+    lyrics_generation: u64,
+    pub lyrics_import_uri: Option<String>,
     /// Whether the panel follows the current line. Manual scrolling disables
     /// it until Follow is used or the track changes.
     pub lyrics_following: bool,
@@ -1233,6 +1235,8 @@ impl App {
             softened_covers: Default::default(),
             lyrics_uri: None,
             lyrics: Loadable::NotLoaded,
+            lyrics_generation: 0,
+            lyrics_import_uri: None,
             lyrics_following: true,
             lyrics_line_shown: None,
             show_devices: false,
@@ -2706,12 +2710,50 @@ impl App {
                     }
                     Err(error) => log::warn!("rootlist unavailable: {error}"),
                 },
-                Event::Lyrics { uri, result } => {
-                    if self.lyrics_uri.as_deref() == Some(uri.as_str()) {
+                Event::Lyrics {
+                    uri,
+                    generation,
+                    result,
+                } => {
+                    if self.lyrics_uri.as_deref() == Some(uri.as_str())
+                        && generation == self.lyrics_generation
+                    {
                         self.lyrics = match result {
                             Ok(found) => Loadable::Loaded(found),
                             Err(error) => Loadable::Failed(error),
                         };
+                    }
+                }
+                Event::LyricsImported { uri, result } => {
+                    self.lyrics_import_uri = None;
+                    match result {
+                        Ok(Some(found)) => {
+                            if self.now_playing().is_some_and(|now| now.uri == uri) {
+                                self.lyrics_generation = self.lyrics_generation.wrapping_add(1);
+                                self.lyrics_uri = Some(uri);
+                                self.lyrics = Loadable::Loaded(Some(found));
+                                self.lyrics_following = true;
+                                self.lyrics_line_shown = None;
+                            }
+                            self.toast(gettext(
+                                self.locale,
+                                "Lyrics imported. The original file stays unchanged.",
+                            ));
+                        }
+                        Ok(None) => {}
+                        Err(error) => self.toast(error),
+                    }
+                }
+                Event::LyricsOverrideCleared { uri, result } => {
+                    self.lyrics_import_uri = None;
+                    match result {
+                        Ok(()) => {
+                            if self.now_playing().is_some_and(|now| now.uri == uri) {
+                                self.lyrics = Loadable::NotLoaded;
+                                self.request_lyrics();
+                            }
+                        }
+                        Err(error) => self.toast(error),
                     }
                 }
                 Event::PlaylistCache {
@@ -3938,8 +3980,10 @@ impl App {
             return;
         }
         self.lyrics = Loadable::Loading;
+        self.lyrics_generation = self.lyrics_generation.wrapping_add(1);
         let local_file = self.local_file(&now.uri).map(std::path::Path::to_path_buf);
         self.backend.send(Command::Lyrics(Box::new(LyricsRequest {
+            generation: self.lyrics_generation,
             uri: now.uri,
             query: crate::lyrics::Query {
                 artist: now
@@ -12065,6 +12109,24 @@ impl App {
             }
             Action::PauseLyricsFollow => self.lyrics_following = false,
             Action::RetryLyrics => self.request_lyrics(),
+            Action::ImportLyrics => {
+                if self.lyrics_import_uri.is_none()
+                    && !self.offline
+                    && let Some(now) = self.now_playing().filter(|now| !now.is_episode)
+                {
+                    self.lyrics_import_uri = Some(now.uri.clone());
+                    self.backend.choose_lyrics_file(now.uri);
+                }
+            }
+            Action::UseOnlineLyrics => {
+                if self.lyrics_import_uri.is_none()
+                    && !self.offline
+                    && let Some(now) = self.now_playing().filter(|now| !now.is_episode)
+                {
+                    self.lyrics_import_uri = Some(now.uri.clone());
+                    self.backend.send(Command::UseOnlineLyrics { uri: now.uri });
+                }
+            }
             Action::ToggleDevicesPopup => {
                 self.show_devices = !self.show_devices;
                 if self.show_devices {
@@ -14422,10 +14484,12 @@ mod tests {
                     .map(|i| crate::lyrics::Line {
                         at_ms: Some(i * 5000),
                         text: format!("Autoscroll lyric line {i}"),
+                        ..Default::default()
                     })
                     .collect(),
                 synced: true,
                 instrumental: false,
+                ..Default::default()
             }));
             if let Some(remote) = &mut app.remote {
                 remote.state.is_playing = false;
@@ -25011,6 +25075,55 @@ mod tests {
                 .commands
                 .contains(&egui::ViewportCommand::Fullscreen(false))
         );
+    }
+
+    #[test]
+    fn lyrics_import_wins_over_late_network_and_preserves_other_tracks() {
+        let mut app = headless_app();
+        app.local.track = Some(crate::player::LocalTrack {
+            uri: "spotify:track:current".into(),
+            ..Default::default()
+        });
+        app.local.playback = Playback::Playing;
+        let uri = app.now_playing().unwrap().uri;
+        app.lyrics_uri = Some(uri.clone());
+        app.lyrics_generation = 42;
+        app.lyrics_import_uri = Some(uri.clone());
+        let mut imported = crate::lyrics::from_text("[00:01]<00:01>Hello<00:02>").unwrap();
+        imported.imported = true;
+        app.handle_backend_events(vec![Event::LyricsImported {
+            uri: uri.clone(),
+            result: Ok(Some(imported.clone())),
+        }]);
+        assert_eq!(app.lyrics_generation, 43);
+        assert!(app.lyrics_import_uri.is_none());
+        app.handle_backend_events(vec![Event::Lyrics {
+            uri: uri.clone(),
+            generation: 42,
+            result: Ok(None),
+        }]);
+        assert!(matches!(&app.lyrics, Loadable::Loaded(Some(found)) if found == &imported));
+        for result in [Ok(None), Err("invalid file".into())] {
+            app.lyrics_import_uri = Some(uri.clone());
+            app.handle_backend_events(vec![Event::LyricsImported {
+                uri: uri.clone(),
+                result,
+            }]);
+            assert!(matches!(&app.lyrics, Loadable::Loaded(Some(found)) if found == &imported));
+            assert!(app.lyrics_import_uri.is_none());
+        }
+        app.handle_backend_events(vec![Event::LyricsImported {
+            uri: "spotify:track:previous".into(),
+            result: Ok(Some(crate::lyrics::from_text("Other song").unwrap())),
+        }]);
+        assert!(matches!(&app.lyrics, Loadable::Loaded(Some(found)) if found == &imported));
+        app.offline = false;
+        app.handle_backend_events(vec![Event::LyricsOverrideCleared {
+            uri,
+            result: Ok(()),
+        }]);
+        assert!(matches!(app.lyrics, Loadable::Loading));
+        assert_eq!(app.lyrics_generation, 44);
     }
 
     fn headless_app() -> App {

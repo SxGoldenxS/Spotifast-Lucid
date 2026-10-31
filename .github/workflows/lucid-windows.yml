@@ -5,7 +5,7 @@ on:
       version:
         description: Package version for a manual build
         required: true
-        default: '0.5.0'
+        default: '0.6.0'
   push:
     tags: ['lucid-v*']
 permissions:

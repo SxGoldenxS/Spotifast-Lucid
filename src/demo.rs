@@ -878,10 +878,12 @@ fn sample_lyrics() -> crate::lyrics::Lyrics {
             .map(|(at_ms, text)| crate::lyrics::Line {
                 at_ms: Some(*at_ms),
                 text: (*text).to_string(),
+                ..Default::default()
             })
             .collect(),
         synced: true,
         instrumental: false,
+        ..Default::default()
     }
 }
 
@@ -1639,6 +1641,20 @@ pub fn apply_flags(app: &mut App, page: Option<&str>, show: Option<&str>) {
                         ascending: false,
                     },
                 );
+            }
+            "word-lyrics" | "word-lyrics-fullscreen" => {
+                app.lyrics_uri = app.now_playing().map(|now| now.uri);
+                // Explicit synthetic timings for this invented demo line only.
+                let mut lyrics = sample_lyrics();
+                let timed = crate::lyrics::from_text("[01:19]<01:19>But <01:19.5>the <01:20>night <01:20.7>is <01:21>wide <01:21.7>and <01:22>the <01:22.5>road <01:23.5>is <01:24>long<01:25.5>").unwrap();
+                lyrics.lines[6] = timed.lines[0].clone();
+                lyrics.imported = true;
+                app.lyrics = Loadable::Loaded(Some(lyrics));
+                app.lyrics_following = true;
+                app.show_lyrics_panel = true;
+                if surface == "word-lyrics-fullscreen" {
+                    app.lyrics_fullscreen = Some(false);
+                }
             }
             "lyrics" | "lyrics-fullscreen" => {
                 app.lyrics_uri = app.now_playing().map(|now| now.uri);

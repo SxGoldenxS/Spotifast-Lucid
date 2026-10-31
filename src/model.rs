@@ -1345,6 +1345,8 @@ pub enum Action {
     FollowLyrics,
     PauseLyricsFollow,
     RetryLyrics,
+    ImportLyrics,
+    UseOnlineLyrics,
     ToggleDevicesPopup,
     /// Ask GitHub for the latest release and report the result to the user.
     CheckForUpdates,

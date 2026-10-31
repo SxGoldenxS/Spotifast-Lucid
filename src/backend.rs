@@ -742,6 +742,14 @@ pub enum Command {
         selected:
             std::pin::Pin<Box<dyn std::future::Future<Output = Option<rfd::FileHandle>> + Send>>,
     },
+    ChooseLyricsFile {
+        uri: String,
+        selected:
+            std::pin::Pin<Box<dyn std::future::Future<Output = Option<rfd::FileHandle>> + Send>>,
+    },
+    UseOnlineLyrics {
+        uri: String,
+    },
     /// Find the songs in the local files folder, off the UI thread, as the
     /// player does when it starts.
     ScanLocalFiles(std::path::PathBuf),
@@ -965,6 +973,7 @@ pub enum Command {
 }
 
 pub struct LyricsRequest {
+    pub generation: u64,
     /// The track the answer is for, so a stale one is ignored.
     pub uri: String,
     pub query: crate::lyrics::Query,
@@ -974,6 +983,14 @@ pub struct LyricsRequest {
 }
 
 pub enum Event {
+    LyricsImported {
+        uri: String,
+        result: Result<Option<crate::lyrics::Lyrics>, String>,
+    },
+    LyricsOverrideCleared {
+        uri: String,
+        result: Result<(), String>,
+    },
     Soloist(crate::soloist::Update),
     /// The folder picked in the local files dialog; `None` when cancelled.
     LocalFilesFolderChosen(Option<std::path::PathBuf>),
@@ -1052,6 +1069,7 @@ pub enum Event {
     /// Track lyrics, or `None` when unavailable.
     Lyrics {
         uri: String,
+        generation: u64,
         result: Result<Option<crate::lyrics::Lyrics>, String>,
     },
     /// The account's playlist tree, folders and all, and which of its
@@ -1388,6 +1406,20 @@ impl Backend {
             .set_title("Choose the local files folder")
             .pick_folder();
         self.send(Command::ChooseLocalFilesFolder {
+            selected: Box::pin(selected),
+        });
+    }
+
+    pub fn choose_lyrics_file(&self, uri: String) {
+        if self.offline {
+            return;
+        }
+        let selected = rfd::AsyncFileDialog::new()
+            .set_title("Import lyrics for this song")
+            .add_filter("Timed lyrics or text", &["ttml", "lrc", "txt"])
+            .pick_file();
+        self.send(Command::ChooseLyricsFile {
+            uri,
             selected: Box::pin(selected),
         });
     }
@@ -2313,6 +2345,44 @@ impl Worker {
                     tokio::spawn(async move {
                         let folder = selected.await.map(|folder| folder.path().to_path_buf());
                         let _ = events.send(Event::LocalFilesFolderChosen(folder));
+                        waker.wake();
+                    });
+                }
+                Command::ChooseLyricsFile { uri, selected } => {
+                    let events = self.events.clone();
+                    let waker = self.waker.clone();
+                    let directory = self.dirs.lyrics_overrides_dir();
+                    tokio::spawn(async move {
+                        let result = match selected.await {
+                            None => Ok(None),
+                            Some(file) => {
+                                let target = uri.clone();
+                                tokio::task::spawn_blocking(move || {
+                                    crate::lyrics::timed::import(&directory, &target, file.path())
+                                        .map(Some)
+                                        .map_err(|error| error.to_string())
+                                })
+                                .await
+                                .unwrap_or_else(|_| Err("Couldn't import those lyrics.".into()))
+                            }
+                        };
+                        let _ = events.send(Event::LyricsImported { uri, result });
+                        waker.wake();
+                    });
+                }
+                Command::UseOnlineLyrics { uri } => {
+                    let events = self.events.clone();
+                    let waker = self.waker.clone();
+                    let directory = self.dirs.lyrics_overrides_dir();
+                    tokio::spawn(async move {
+                        let target = uri.clone();
+                        let result = tokio::task::spawn_blocking(move || {
+                            crate::lyrics::timed::clear_override(&directory, &target)
+                                .map_err(|error| error.to_string())
+                        })
+                        .await
+                        .unwrap_or_else(|_| Err("Couldn't switch lyric sources.".into()));
+                        let _ = events.send(Event::LyricsOverrideCleared { uri, result });
                         waker.wake();
                     });
                 }
@@ -4650,17 +4720,28 @@ impl Worker {
         let events = self.events.clone();
         let waker = self.waker.clone();
         let cache_dir = self.dirs.lyrics_cache_dir();
+        let overrides = self.dirs.lyrics_overrides_dir();
         let engine = self.engine.clone();
         tokio::spawn(async move {
+            let uri = request.uri.clone();
+            let imported = tokio::task::spawn_blocking(move || {
+                crate::lyrics::timed::load_override(&overrides, &uri)
+            })
+            .await
+            .ok()
+            .flatten();
             // A local file's own words go first, then Spotify's: they
             // follow the recording exactly. Everything else, a signed-out
             // session included, falls back to LRCLIB.
-            let own = match request.local_file {
-                Some(file) => tokio::task::spawn_blocking(move || crate::local_tags::lyrics(&file))
-                    .await
-                    .ok()
-                    .flatten(),
-                None => None,
+            let own = match (imported, request.local_file) {
+                (Some(found), _) => Some(found),
+                (None, Some(file)) => {
+                    tokio::task::spawn_blocking(move || crate::local_tags::lyrics(&file))
+                        .await
+                        .ok()
+                        .flatten()
+                }
+                (None, None) => None,
             };
             let exact = match own {
                 Some(found) => Some(found),
@@ -4677,6 +4758,7 @@ impl Worker {
             };
             let _ = events.send(Event::Lyrics {
                 uri: request.uri,
+                generation: request.generation,
                 result,
             });
             waker.wake();

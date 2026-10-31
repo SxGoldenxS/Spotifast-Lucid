@@ -6235,6 +6235,7 @@ dependencies = [
  "rfd",
  "ring",
  "rodio",
+ "roxmltree",
  "rustls",
  "rustls-webpki",
  "serde",
