@@ -795,4 +795,10 @@ On Linux with PipeWire, the managed child is given a private input through
 feed the visualizers before volume, then play through the default output.
 Only that child's stream is held at unity gain; its documented volume events
 set the final processed gain. The route is temporary and local, and writes no
-audio to disk. Other platforms retain Soloist's direct output.
+audio to disk. The Mac native-audio preview also reroutes the owned child.
+Once its private tap mutes direct output, the loopback API sets source volume
+to 100% and confirms that level from playback state or a volume event.
+Subsequent volume-change events from Spotify update Spotifast's output fader,
+then restore the source to 100%. Reset echoes and state snapshots never
+replace the output fader. Windows capture only observes the direct output,
+so this volume policy is not applied there.

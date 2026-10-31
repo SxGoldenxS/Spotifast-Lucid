@@ -2943,6 +2943,7 @@ impl App {
                 }
             }
             Update::Audio(available) => self.soloist_audio = available && self.settings.soloist_enabled && matches!(self.soloist_status, Status::Ready { .. }),
+            Update::OutputVolume => self.session_dirty = true,
             Update::Changed { queue } => {
                 if self.soloist_device_id.is_some() {
                     self.poll_remote_soon();
@@ -29518,6 +29519,19 @@ mod tests {
             seq,
             result: Ok(Some(state)),
         });
+    }
+
+    #[test]
+    fn soloist_phone_output_volume_marks_the_session_for_saving() {
+        let mut app = remote_volume_app();
+        let builtin = app.settings.volume;
+        app.session_dirty = false;
+        app.backend.soloist_output_volume.set(30);
+        app.on_soloist(crate::soloist::Update::OutputVolume);
+        assert!(app.session_dirty);
+        assert_eq!(app.backend.soloist_output_volume.percent(), 30);
+        assert_eq!(app.settings.volume, builtin);
+        app.backend.shutdown();
     }
 
     #[test]

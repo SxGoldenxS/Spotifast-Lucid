@@ -170,9 +170,10 @@ Spotifast processes its owned Soloist output through the operating system for
 EQ and visualizers; it does not capture the system mix. Separate
 [native audio previews](/soloist/#native-audio-preview) add process-only Mac
 EQ and visualizers, and Windows visualizers. Mac previews apply Spotifast’s
-separate output volume after the visualizers; Spotify/phone volume still affects
-capture. Windows capture follows source volume and cannot provide an audible
-EQ route.
+output volume after the visualizers and hold Soloist's source at 100% once
+redirected. Spotify/phone volume events change that output level before the
+source is reset, so Spotify's indicator returns to 100%. Windows capture
+follows source volume and cannot provide an audible EQ route.
 
 ## librespot playback
 

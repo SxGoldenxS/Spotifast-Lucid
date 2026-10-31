@@ -171,14 +171,25 @@ running. No virtual driver is installed on either platform and no captured
 audio is saved. The Mac playback path keeps the tap's sample rate; only the
 visualization copy is resampled.
 
-On Mac, once capture is ready, Spotifast's volume slider controls its own
+On Mac, once capture is ready and Soloist's direct output is muted, Spotifast
+sets Soloist's source volume to 100%. Spotifast's slider controls the redirected
 output after EQ and the visualizers. **Zero in Spotifast keeps the visualizers
-moving.** This separate level is remembered in the session file and defaults
-to 100%, leaving the existing source level unchanged. Spotify and your phone
-still control Soloist's source volume, which affects the captured signal;
-muting there still silences the visuals. Before capture is ready, the slider
-controls Soloist's ordinary output. Reconnecting briefly uses that ordinary
-output until capture is confirmed again.
+moving.** Its output level is remembered in the session file and defaults to
+100%, so a low source level no longer limits the slider's maximum.
+
+A volume-change event from Spotify or your phone updates Spotifast's output
+level, then Spotifast restores Soloist to 100%. Spotify's volume indicator
+therefore returns to 100%; it does not show the listening level. Moving a
+control already at 100% may produce no change event, so use Spotifast's slider
+for predictable control, including restoring full volume. A phone change can
+briefly affect capture before Soloist accepts the reset. Confirmations and
+repeated events from that reset never turn the output up or unmute it.
+
+Before capture is ready, including briefly after reconnecting, Soloist keeps
+its ordinary output and source volume. Spotifast raises the source only after
+its private Mac route has taken over the audible output. If Soloist does not
+confirm the full source level within five seconds, the player stops and offers
+retry in Settings.
 
 Windows capture still follows Soloist's volume: **zero stops the visualizers**.
 The tested WASAPI session and stream controls affect capture too, so they

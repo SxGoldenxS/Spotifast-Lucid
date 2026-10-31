@@ -136,6 +136,13 @@ impl Bridge {
     pub fn routed(&self) -> bool {
         self.state.routed.load(Ordering::Acquire)
     }
+    /// A confirmed Mac route can raise the source without exposing dry audio.
+    /// Windows observes only; Linux already locks source gain in PipeWire.
+    pub fn owns_output_volume(&self) -> bool {
+        cfg!(all(target_os = "macos", feature = "soloist-preview"))
+            && self.routed()
+            && !self.failed()
+    }
     pub fn failed(&self) -> bool {
         self.state.failed.load(Ordering::Acquire)
     }
@@ -155,6 +162,36 @@ impl Bridge {
         if message["is_active"] == false {
             self.state.playing.store(false, Ordering::Release);
         }
+    }
+}
+
+#[cfg(all(
+    test,
+    any(
+        target_os = "linux",
+        all(
+            feature = "soloist-preview",
+            any(target_os = "macos", target_os = "windows")
+        )
+    )
+))]
+mod tests {
+    use super::*;
+    #[test]
+    fn only_a_confirmed_healthy_mac_output_allows_full_source_volume() {
+        let bridge = Bridge {
+            #[cfg(target_os = "linux")]
+            name: "test".into(),
+            state: Arc::new(State::new()),
+        };
+        assert!(!bridge.owns_output_volume());
+        bridge.state.routed.store(true, Ordering::Release);
+        assert_eq!(
+            bridge.owns_output_volume(),
+            cfg!(all(target_os = "macos", feature = "soloist-preview"))
+        );
+        bridge.state.failed.store(true, Ordering::Release);
+        assert!(!bridge.owns_output_volume());
     }
 }
 
