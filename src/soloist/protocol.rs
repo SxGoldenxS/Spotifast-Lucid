@@ -365,6 +365,7 @@ fn playback(state: &Value, mut device: Device) -> Result<PlaybackState> {
             }),
         repeat_state: state["options"]["repeat"].as_str().unwrap_or("off").into(),
         shuffle_state: state["options"]["shuffle"].as_bool().unwrap_or(false),
+        smart_shuffle_state: state["options"]["modes"]["context_enhancement"] == "RECOMMENDATION",
         ..Default::default()
     })
 }
@@ -388,6 +389,27 @@ mod tests {
         assert_eq!(got.item.unwrap().name(), "Song");
         assert_eq!(got.repeat_state, "track");
         assert!(got.shuffle_state);
+    }
+    #[test]
+    fn recommendation_mode_is_observed_without_inventing_a_control() {
+        for (mode, expected) in [
+            (Value::Null, false),
+            (json!("NONE"), false),
+            (json!("RECOMMENDATION"), true),
+            (json!("future-mode"), false),
+        ] {
+            let state = json!({"is_active":true,"options":{"shuffle":true,"modes":{"context_enhancement":mode}}});
+            let got = playback(&state, Device::default()).unwrap();
+            assert_eq!(got.smart_shuffle_state, expected);
+        }
+        let mut request = remote(RemoteAction::Shuffle);
+        if let ApiRequest::Remote { flag, .. } = &mut request {
+            *flag = false;
+        }
+        assert_eq!(
+            commands(&request).unwrap(),
+            vec![json!({"command":"set_shuffle", "enabled":false})]
+        );
     }
     #[tokio::test]
     async fn unbound_or_inactive_player_does_not_replace_remote_state() {

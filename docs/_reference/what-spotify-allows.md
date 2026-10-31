@@ -235,9 +235,16 @@ The Web API and librespot do not provide these features:
   generates these for its own clients. Spotifast only has plain shuffle.
   A Blend that a Spotify app already made opens like any playlist, with
   who added each song, but Spotifast cannot start or manage one.
+  Soloist can continue a Smart Shuffle context transferred from Spotify;
+  its documented API reports recommendation mode but has no command to
+  enable it. See [Soloist's transferred modes](/soloist/#transferred-dj-and-smart-shuffle).
 - **Spotify DJ.** Its special playlist context does not expose playable tracks
   to librespot, so Spotifast leaves its card out of Made for you. See
   [librespot issue #1604](https://github.com/librespot-org/librespot/issues/1604).
+  An experimental upstream patch exists but is not in the pinned engine.
+  Soloist can continue a session started in Spotify and transferred through
+  Connect. Starting the DJ placeholder directly is still unsupported; see
+  [the Soloist steps](/soloist/#transferred-dj-and-smart-shuffle).
 - **Lossless through librespot.** librespot does not receive lossless streams.
   The optional [Soloist player](/soloist/) uses Spotify's own implementation.
   Its API does not report the delivered format or expose raw audio for

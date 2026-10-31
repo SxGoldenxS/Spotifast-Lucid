@@ -1741,6 +1741,18 @@ impl App {
         matches!(self.target(), Target::Remote(Some(id)) if self.soloist_device_id.as_ref() == Some(&id))
     }
 
+    /// Spotify may transfer an enhanced context to Soloist. Observing it
+    /// does not imply the local API can enable the mode.
+    pub fn smart_shuffle_active(&self) -> bool {
+        self.targets_own_soloist()
+            && self.remote_fresh().is_some_and(|remote| {
+                remote.state.shuffle_state
+                    && remote.state.smart_shuffle_state
+                    && remote.state.device.as_ref().and_then(|d| d.id.as_ref())
+                        == self.soloist_device_id.as_ref()
+            })
+    }
+
     /// Only the Mac rerenderer owns a fader after capture. Windows observes
     /// Soloist's output; Linux already applies synchronized Connect volume.
     fn has_soloist_output_volume(&self) -> bool {
@@ -9324,6 +9336,25 @@ impl App {
         if self.soloist_waiting() {
             self.clear_play_pending();
             return;
+        }
+        // Starting the DJ placeholder as an ordinary playlist empties Soloist's
+        // transferred session. Only Spotify currently creates that session;
+        // preserve the current song and queue rather than dispatching a load.
+        if request.context_uri.as_deref() == Some(crate::made_for_you::UNSUPPORTED_DJ_URI) {
+            if self.targets_own_soloist() {
+                self.toast(gettext(
+                    self.locale,
+                    "Start DJ in Spotify on This computer, then transfer to Spotifast Soloist. You can close Spotify afterwards.",
+                ));
+                return;
+            }
+            if self.target() == Target::Local {
+                self.toast(gettext(
+                    self.locale,
+                    "The built-in player cannot play Spotify DJ. Use Soloist and transfer a DJ session from Spotify.",
+                ));
+                return;
+            }
         }
         // Shuffle applies across contexts until disabled. A selected row still
         // starts first; otherwise choose a random starting track.
@@ -21135,6 +21166,103 @@ mod tests {
         app.check_tray_wait(started + TRAY_WAIT, false);
         assert!(!app.wants_show);
         app.backend.shutdown();
+    }
+
+    #[test]
+    fn soloist_smart_shuffle_follows_only_the_current_devices_fresh_state() {
+        let mut app = test_app("soloist-smart-shuffle");
+        app.selected_device = Some("own".into());
+        app.soloist_device_id = Some("own".into());
+        app.remote = Some(RemoteSnapshot {
+            state: PlaybackState {
+                device: Some(Device {
+                    id: Some("own".into()),
+                    ..Default::default()
+                }),
+                shuffle_state: true,
+                smart_shuffle_state: true,
+                ..Default::default()
+            },
+            received_at: Instant::now(),
+        });
+        assert!(app.smart_shuffle_active());
+        app.selected_device = Some("speaker".into());
+        assert!(
+            !app.smart_shuffle_active(),
+            "a transfer clears the indicator immediately"
+        );
+        app.selected_device = Some("own".into());
+        app.remote
+            .as_mut()
+            .unwrap()
+            .state
+            .device
+            .as_mut()
+            .unwrap()
+            .id = Some("speaker".into());
+        assert!(
+            !app.smart_shuffle_active(),
+            "another device's state is not Soloist's"
+        );
+        let remote = app.remote.as_mut().unwrap();
+        remote.state.device.as_mut().unwrap().id = Some("own".into());
+        remote.state.shuffle_state = false;
+        assert!(!app.smart_shuffle_active());
+        let remote = app.remote.as_mut().unwrap();
+        remote.state.shuffle_state = true;
+        remote.received_at = Instant::now() - REMOTE_FRESH - Duration::from_secs(1);
+        assert!(!app.smart_shuffle_active());
+        app.backend.shutdown();
+    }
+
+    #[test]
+    fn starting_dj_here_keeps_the_current_context_and_queue() {
+        for soloist in [false, true] {
+            let mut app = test_app(if soloist {
+                "dj-soloist-guard"
+            } else {
+                "dj-local-guard"
+            });
+            app.backend.set_offline(true);
+            app.local_ready = !soloist;
+            if soloist {
+                app.settings.soloist_enabled = true;
+                app.soloist_status = crate::soloist::Status::Ready {
+                    name: "owned".into(),
+                    version: "test".into(),
+                    expires: u64::MAX,
+                };
+                app.soloist_device_id = Some("own".into());
+                app.selected_device = Some("own".into());
+            }
+            app.assumed_context = Some(AssumedContext {
+                uri: "spotify:playlist:keep".into(),
+                shuffle: None,
+                at: Instant::now(),
+            });
+            app.queue = loaded_queue("spotify:track:keep", &["spotify:track:next"]);
+            for shuffled in [false, true] {
+                app.play_request(
+                    PlayRequest::context(crate::made_for_you::UNSUPPORTED_DJ_URI),
+                    shuffled,
+                );
+                assert_eq!(
+                    app.playing_context_uri().as_deref(),
+                    Some("spotify:playlist:keep")
+                );
+                assert_eq!(queue_uris(&app).1, vec!["spotify:track:next"]);
+                assert!(!app.any_play_pending());
+                assert!(!app.shuffle_wanted);
+                assert!(app.queued_play.is_none());
+                assert!(app.backend.take_remote_play_requests().is_empty());
+            }
+            assert!(
+                app.toasts
+                    .iter()
+                    .any(|toast| toast.message.contains("DJ") && toast.message.contains("Soloist"))
+            );
+            app.backend.shutdown();
+        }
     }
 
     #[test]

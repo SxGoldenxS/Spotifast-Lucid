@@ -60,7 +60,7 @@ retain their original UI and updater.
 With Inno Setup 6.3+ available on the build machine, after a production build:
 
 ```powershell
-./contrib/lucid/package.ps1 -Version 0.4.0
+./contrib/lucid/package.ps1 -Version 0.5.0
 ```
 
 This creates a clean portable ZIP, a native per-user Setup.exe and checksums

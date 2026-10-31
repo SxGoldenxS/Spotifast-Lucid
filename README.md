@@ -12,6 +12,9 @@ Includes a separate navy/azure **Great Sage** theme, selectable in Appearance.
 Spotify Premium, your own Spotify app Client ID and (for Soloist) a personal
 Soloist key are required. No account or keys are included. This preview does
 not include MilkDrop. The original Spotifast project and documentation follow.
+For DJ and Smart Shuffle, see the
+[Soloist start-and-transfer instructions](INSTALL-LUCID.md#dj-and-smart-shuffle-through-soloist).
+Native DJ launch and a Smart Shuffle enable command are not available.
 
 <p align="center">
   <img src="docs/assets/images/logo.svg" alt="Spotifast logo" width="88" height="88">

@@ -25,6 +25,40 @@ For a portable copy, download **Spotifast-Lucid-Windows-x64.zip** instead,
 extract the entire ZIP to a folder you own, and run `spotifast.exe` inside it.
 Both downloads contain the same self-contained Rust application.
 
+## DJ and Smart Shuffle through Soloist
+
+These modes can continue in Soloist after a Spotify app starts them. Spotifast
+cannot currently create a DJ session or enable Smart Shuffle itself.
+
+1. Keep Spotifast open with Soloist enabled and paired.
+2. Open official Spotify using the same account. In its device picker choose
+   **This computer**, so Spotify itself is playing first.
+3. For **DJ**, start DJ and wait for a song to play. For **Smart Shuffle**,
+   start a playlist or Liked Songs, then cycle Spotify's shuffle control until
+   its tooltip says **Disable Smart Shuffle**.
+4. In Spotify's device picker, transfer playback to the exact
+   **Spotifast Soloist (...)** device shown in Spotifast's setup.
+5. Check that playback is advancing in Spotifast. You can now fully quit
+   official Spotify; Soloist continues playing independently.
+
+When Soloist reports Smart Shuffle's recommendation mode, the main player bar's shuffle
+button's tooltip and accessibility label identify it as **Smart Shuffle**.
+Clicking still turns shuffle off; clicking again enables ordinary shuffle.
+Enable Smart Shuffle in Spotify again when needed. Starting another playlist
+in Spotifast may replace the enhanced context.
+
+Starting DJ as an ordinary playlist produces an empty playback state on the
+tested Soloist build. Spotifast therefore keeps the current music and shows
+the transfer instructions instead. Play/pause and Next can control a transferred
+session; there is no DJ voice-request or next-set control. If a session stops
+resuming after a restart, repeat the transfer steps.
+
+Transferred DJ playback and Smart Shuffle's `RECOMMENDATION` state were checked
+on Windows with Soloist **1.3.10.31**, including a track transition with official
+Spotify fully closed. DJ narration and long sessions have not been independently
+verified. Availability depends on Spotify, your account and region. This does
+not add an experimental librespot patch, another service or a new dependency.
+
 ## Theme and window
 
 Fresh installs select **TrueVision**, the gold/ivory Raphael theme, by default.

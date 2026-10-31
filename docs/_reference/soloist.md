@@ -193,6 +193,30 @@ Spotify lists capabilities such as Smart Shuffle, Jam and crossfade for its
 player. Spotifast only offers controls exposed by the documented Soloist API;
 those names alone do not establish an integration.
 
+## Transferred DJ and Smart Shuffle
+
+Start playback in official Spotify first, with **This computer** selected in
+Spotify's device picker. Start DJ and wait for its song, or start a playlist
+and enable Smart Shuffle. Then transfer to **Spotifast Soloist (...)** through
+Spotify Connect. Once playback advances in Spotifast, official Spotify can
+be fully closed. This was checked on Windows with Soloist 1.3.10.31 across a
+track transition. DJ narration and long sessions have not been independently
+verified; availability depends on Spotify's account and regional support.
+
+Soloist's [documented WebSocket API](https://developer.spotify.com/documentation/soloist/reference/websocket-api)
+reports `options.modes.context_enhancement = RECOMMENDATION`, but has no
+setter for it. Spotifast identifies the transferred Smart Shuffle mode in
+the existing shuffle button's tooltip and accessibility label. That button
+still toggles ordinary shuffle; it cannot enable Smart Shuffle. A new context
+or a restarted session may require repeating the transfer.
+
+Starting the DJ placeholder through `play.uri` or the Web API produced an
+empty playback state on that build. Spotifast blocks a new DJ context load
+on its own players and explains the transfer workflow, preserving the
+current music. A transferred DJ session supports ordinary playback controls;
+it does not add a voice-request or next-set control. No dependency fork or
+capability flag is changed to claim native DJ support.
+
 ## Credentials, privacy and terms
 
 The key belongs to your Spotify account and is stored with Spotifast's other

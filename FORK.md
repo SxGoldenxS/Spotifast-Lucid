@@ -34,6 +34,11 @@ GitHub release ZIP instead. Each person supplies their own account and keys.
 Soloist is Spotify's own separately downloaded player. It is not bundled in
 this repository or release. Its saved key is protected by the operating system.
 Premium is required. See the [upstream guide](https://spotifast.rocks/soloist/).
+For DJ and Smart Shuffle, use the
+[start-and-transfer workflow](INSTALL-LUCID.md#dj-and-smart-shuffle-through-soloist).
+This fork recognizes Soloist's reported Smart Shuffle mode and prevents an
+unsupported DJ playlist load from replacing current playback. It does not
+generate DJ sessions or add a Smart Shuffle enable command.
 If the built-in librespot player reports that Spotify refused an audio key,
 an official Spotify device or Soloist is the alternative; reinstalling or
 changing theme settings does not fix that Spotify-side refusal.

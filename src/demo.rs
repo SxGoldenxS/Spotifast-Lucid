@@ -756,6 +756,7 @@ pub fn populate(app: &mut App) {
     }];
     app.remote = Some(RemoteSnapshot {
         state: PlaybackState {
+            smart_shuffle_state: false,
             device: Some(app.devices[1].clone()),
             repeat_state: "off".into(),
             shuffle_state: true,

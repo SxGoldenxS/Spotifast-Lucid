@@ -772,6 +772,9 @@ pub struct PlaybackState {
     pub repeat_state: String,
     #[serde(default)]
     pub shuffle_state: bool,
+    /// Read from Soloist's documented mode state, not a Web API control.
+    #[serde(skip)]
+    pub smart_shuffle_state: bool,
     #[serde(default)]
     pub context: Option<Context>,
     #[serde(default)]
