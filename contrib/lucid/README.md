@@ -80,6 +80,13 @@ profile preservation, uninstall and reinstall. The Windows release workflow
 runs them before packaging both downloads. The bootstrap workflow packages
 the unchanged, checksum-verified 0.3.0 Rust payload for installer-only 0.4.0.
 
+A complete published version is kept unchanged. Tagged runs and manual builds
+for that version validate its downloads and exit successfully before rebuilding.
+Use an unreleased version number for a new manual build. Missing assets,
+unfinished drafts and GitHub access errors still fail visibly. The copied
+production docs workflow only deploys in the upstream repository; this fork's
+documentation is validated by CI and is available in the repository.
+
 ## Scope and provenance
 
 The design references [Lucid](https://github.com/sanoojes/spicetify-lucid).

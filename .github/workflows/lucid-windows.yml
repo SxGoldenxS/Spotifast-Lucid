@@ -10,8 +10,27 @@ on:
     tags: ['lucid-v*']
 permissions:
   contents: read
+concurrency:
+  group: lucid-windows-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
+  release-state:
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.release.outputs.published }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test release checks
+        run: python3 .github/scripts/test-lucid-release-state.py
+      - name: Check for an already published version
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('lucid-v{0}', inputs.version) }}
+        run: python3 .github/scripts/lucid-release-state.py
   windows:
+    needs: release-state
+    if: needs.release-state.outputs.published != 'true'
     runs-on: windows-latest
     permissions:
       contents: write
@@ -54,8 +73,18 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          $published = python .github/scripts/lucid-release-state.py
+          if ($LASTEXITCODE -ne 0) { throw 'Could not verify the existing release.' }
+          if ($published -eq 'true') { exit 0 }
           $notes = "contrib/lucid/RELEASE-$env:GITHUB_REF_NAME.md"
           if (!(Test-Path -LiteralPath $notes)) { $notes = 'FORK.md' }
           $assets = Get-ChildItem -LiteralPath dist/Installers -File | Where-Object { $_.Name -match '\.zip$|-Setup\.exe$|^SHA256SUMS\.txt$' } | Select-Object -ExpandProperty FullName
-          gh release create $env:GITHUB_REF_NAME @assets --title "Spotifast Lucid $env:GITHUB_REF_NAME" --notes-file $notes
+          gh release create $env:GITHUB_REF_NAME @assets --verify-tag --title "Spotifast Lucid $env:GITHUB_REF_NAME" --notes-file $notes
+          if ($LASTEXITCODE -ne 0) {
+            # A manual publisher may have finished while this build ran.
+            # Keep a complete published release; never overwrite its assets.
+            $published = python .github/scripts/lucid-release-state.py
+            if ($LASTEXITCODE -ne 0 -or $published -ne 'true') { throw 'Release publication failed.' }
+          }

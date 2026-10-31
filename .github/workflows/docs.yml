@@ -21,6 +21,9 @@ concurrency:
 
 jobs:
   build:
+    # This publishes spotifast.rocks, not a fork's website. Forks still
+    # validate the documentation in CI without deploying upstream's site.
+    if: github.repository == 'crmne/spotifast'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
