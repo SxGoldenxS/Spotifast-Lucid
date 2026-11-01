@@ -25,16 +25,25 @@ RELEASE = {
 
 
 class ReleaseStateTest(unittest.TestCase):
-    def check(self, release):
+    def check(self, release, tag="lucid-v0.5.0"):
         response = io.BytesIO(json.dumps(release).encode())
         with patch.object(MODULE.urllib.request, "urlopen", return_value=response) as request:
-            result = MODULE.already_published("owner/repo", "lucid-v0.5.0", "test-token")
+            result = MODULE.already_published("owner/repo", tag, "test-token")
             self.assertEqual(request.call_args.kwargs["timeout"], 15)
             self.assertEqual(request.call_args.args[0].get_method(), "GET")
             return result
 
     def test_complete_release_is_reused(self):
         self.assertTrue(self.check(RELEASE))
+
+    def test_modern_releases_require_the_signed_updater_assets(self):
+        release = copy.deepcopy(RELEASE)
+        release["tag_name"] = "v0.7.0"
+        with self.assertRaises(ValueError):
+            self.check(release, "v0.7.0")
+        for name in ["spotifast-v0.7.0-x86_64-pc-windows-msvc.zip", "checksums.txt", "checksums.txt.sig"]:
+            release["assets"].append({"name": name, "state": "uploaded", "size": 64, "digest": "sha256:" + "a" * 64})
+        self.assertTrue(self.check(release, "v0.7.0"))
 
     def test_absent_release_can_be_built(self):
         error = urllib.error.HTTPError("https://api.github.com", 404, "Not Found", {}, None)

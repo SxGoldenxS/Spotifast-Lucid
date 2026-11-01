@@ -12,6 +12,7 @@ env:
 
 jobs:
   build:
+    if: github.repository == 'crmne/spotifast'
     name: build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     env:
@@ -275,6 +276,7 @@ jobs:
           if-no-files-found: error
 
   macos:
+    if: github.repository == 'crmne/spotifast'
     name: macOS universal app
     runs-on: macos-latest
     env:
@@ -335,6 +337,7 @@ jobs:
   # sandbox packaging/flatpak describes, so nothing compiles twice. Flathub
   # builds from source on its own machines, from the manifest beside it.
   flatpak:
+    if: github.repository == 'crmne/spotifast'
     name: Flatpak bundle
     needs: build
     runs-on: ubuntu-latest

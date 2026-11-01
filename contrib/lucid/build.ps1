@@ -16,7 +16,7 @@ try {
         & $cargo @Arguments
         if ($LASTEXITCODE -ne 0) { throw ('cargo failed: ' + ($Arguments -join ' ')) }
     }
-    $features = if ($Demo) { 'lucid,demo' } else { 'lucid' }
+    $features = if ($Demo) { 'lucid,demo,soloist-native-audio' } else { 'lucid,soloist-native-audio' }
     $featureArgs = @('--features', $features)
     if (!$MilkDrop) { $featureArgs += '--no-default-features' }
     Invoke-Cargo @('fmt','--all','--check')
@@ -43,7 +43,7 @@ try {
     }
     Copy-Item -LiteralPath 'LICENSE' -Destination $out -Force
     Copy-Item -LiteralPath 'FORK.md','INSTALL-LUCID.md' -Destination $out -Force
-    Set-Content -LiteralPath (Join-Path $out 'spotifast-portable.txt') -Value '' -Encoding utf8
+    Copy-Item -LiteralPath 'packaging/spotifast-portable.txt' -Destination $out -Force
     $themes = Join-Path $out 'spotifast-data\config\themes'
     New-Item -ItemType Directory -Force -Path $themes | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'TrueVision.json'),(Join-Path $PSScriptRoot 'GreatSage.json') -Destination $themes -Force

@@ -28,7 +28,7 @@ fn update_flags_are_intercepted_before_the_arguments_are_parsed() {
         assert!(output.status.success(), "{flags:?}: {output:?}");
         assert_eq!(
             String::from_utf8_lossy(&output.stdout).trim(),
-            format!("spotifast {}", env!("CARGO_PKG_VERSION"))
+            format!("spotifast {}", spotifast::updates::VERSION)
         );
     }
 }

@@ -49,8 +49,15 @@ For a downloaded copy, close Spotifast completely, retain a backup of the old
 executable, and replace only `spotifast.exe` from the new release. Keep your
 existing `spotifast-data` folder. Never overwrite it with another person's.
 An installed copy can instead rerun the newer installer in the same folder.
-The official binary updater is blocked in Lucid builds so it cannot silently
-remove the port. Download new Lucid versions from this fork's Releases page.
+Starting with Lucid 0.7.0, the existing native updater checks this fork's
+GitHub releases on launch, then at most daily. Click the update badge or
+**Settings → About → Check for updates**, choose **Download update**, then
+**Restart to update**. Downloads require a checksum manifest signed by this
+fork's embedded Ed25519 publisher key. The updater retains the private profile
+and restores the old executable if the new one fails to start. It never
+installs a stock upstream binary. Old releases need one manual upgrade.
+New releases use `v0.7.0` style tags for native updater compatibility; published
+`lucid-v*` releases and their links remain available.
 
 For source updates, clone this fork and add the original repository:
 
@@ -67,7 +74,7 @@ publishing; use `git cherry-pick --abort` during a conflict and switch back
 to your original branch if needed. See
 [development details](contrib/lucid/README.md). The custom code is isolated in
 `src/ui/lucid.rs`; the remaining integration points are frame constructors,
-the existing icon renderer, Windows resources and the updater guard.
+the existing icon renderer, Windows resources and the native updater configuration.
 
 The **Lucid Windows** GitHub workflow builds and tests the preview. Publishing
 a `lucid-v*` tag creates a Windows ZIP and checksums from explicit clean files.

@@ -5,7 +5,7 @@ use fastframe_shell::window::Geometry;
 
 /// A fast, native Spotify client.
 #[derive(Debug, Parser)]
-#[command(name = env!("CARGO_BIN_NAME"), version, about)]
+#[command(name = env!("CARGO_BIN_NAME"), version = spotifast::updates::VERSION, about)]
 struct Cli {
     /// A command for the running instance; without one, the app starts.
     #[command(subcommand)]

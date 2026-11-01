@@ -2308,11 +2308,17 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let keyboard_shortcuts = gettext(locale, "Keyboard shortcuts");
     let release_notes = gettext(locale, "Release notes");
     let source_code = gettext(locale, "Source code");
+    let app_version = if cfg!(feature = "lucid") {
+        format!(
+            "Spotifast Lucid {} (Spotifast {})",
+            crate::updates::VERSION,
+            env!("CARGO_PKG_VERSION")
+        )
+    } else {
+        format!("Spotifast {}", env!("CARGO_PKG_VERSION"))
+    };
     let about_rows = [
-        RowText::new(
-            format!("Spotifast {}", env!("CARGO_PKG_VERSION")),
-            built_with.clone(),
-        ),
+        RowText::new(app_version.clone(), built_with.clone()),
         RowText::new(
             format!("{check_for_updates} {checking} {release_notes}"),
             format!("{keyboard_shortcuts} {source_code}"),
@@ -2325,12 +2331,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 let (logo, _) = ui.allocate_exact_size(Vec2::splat(40.0), egui::Sense::hover());
                 theme::logo(ui, logo.center(), 40.0);
                 ui.vertical(|ui| {
-                    theme::text(
-                        ui,
-                        format!("Spotifast {}", env!("CARGO_PKG_VERSION")),
-                        theme::semibold(15.0),
-                        palette.text,
-                    );
+                    theme::text(ui, &app_version, theme::semibold(15.0), palette.text);
                     theme::text(
                         ui,
                         built_with.as_ref(),
@@ -2363,7 +2364,11 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 .clicked()
                 {
                     app.actions
-                        .push(Action::OpenUrl(RELEASE_NOTES_URL.to_owned()));
+                        .push(Action::OpenUrl(if cfg!(feature = "lucid") {
+                            crate::updates::RELEASES_URL.to_owned()
+                        } else {
+                            RELEASE_NOTES_URL.to_owned()
+                        }));
                 }
                 if theme::soft_button(ui, &palette, Some(Icon::Info), &keyboard_shortcuts, false)
                     .clicked()
@@ -2374,7 +2379,11 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     .clicked()
                 {
                     ui.ctx()
-                        .open_url(egui::OpenUrl::new_tab(env!("CARGO_PKG_REPOSITORY")));
+                        .open_url(egui::OpenUrl::new_tab(if cfg!(feature = "lucid") {
+                            format!("https://github.com/{}", crate::updates::CONFIG.repository)
+                        } else {
+                            env!("CARGO_PKG_REPOSITORY").to_owned()
+                        }));
                 }
             });
             ui.add_space(14.0);

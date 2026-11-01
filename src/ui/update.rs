@@ -56,7 +56,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
             ui.add_space(4.0);
             theme::text(
                 ui,
-                format!("{} → {}", env!("CARGO_PKG_VERSION"), release.version),
+                format!("{} → {}", crate::updates::VERSION, release.version),
                 theme::regular(14.0),
                 palette.secondary,
             );

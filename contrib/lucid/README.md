@@ -51,16 +51,29 @@ Lucid executable; the last packaged
 executable is retained as `spotifast.exe.previous`. Existing portable data is
 preserved. A failed build leaves the installed executable untouched.
 
-The custom build blocks the stock binary updater, which would remove this
-port. Update this checkout instead. Upstream builds without `--features lucid`
-retain their original UI and updater.
+The custom build reuses fastframe-update with this fork's repository, package
+version and separate Ed25519 verification key. Upstream builds without
+`--features lucid` retain their original updater configuration. Release tags
+from 0.7.0 use `v<version>` and include the standard portable payload and signed
+`checksums.txt`, as required by the existing updater. The legacy clean ZIP and
+installer remain available. Old published `lucid-v*` releases stay unchanged.
+
+`src/updates.rs::LUCID_VERSION` is the fork's version; Cargo.toml records the
+integrated upstream version. The CLI reports the fork version in Lucid builds
+so the native updater's payload probe matches the package. The release workflow
+refuses a mismatched version before building. Bump LUCID_VERSION and the manual
+packaging/workflow defaults together for each release. The signing key lives
+only in the repository's `LUCID_UPDATE_SIGNING_KEY` Actions secret; commit only
+`assets/lucid-update-public-key.hex`. PyNaCl 1.6.0 is CI signing tooling only.
+The copied stock Release workflow runs only in crmne/spotifast, preventing a
+fork tag from launching its unrelated publishing jobs.
 
 ## Packaging the lightweight installer
 
 With Inno Setup 6.3+ available on the build machine, after a production build:
 
 ```powershell
-./contrib/lucid/package.ps1 -Version 0.6.0
+./contrib/lucid/package.ps1 -Version 0.7.0
 ```
 
 This creates a clean portable ZIP, a native per-user Setup.exe and checksums

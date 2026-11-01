@@ -5,9 +5,9 @@ on:
       version:
         description: Package version for a manual build
         required: true
-        default: '0.6.0'
+        default: '0.7.0'
   push:
-    tags: ['lucid-v*']
+    tags: ['lucid-v*', 'v*']
 permissions:
   contents: read
 concurrency:
@@ -15,6 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release-state:
+    if: github.repository == 'SxGoldenxS/Spotifast-Lucid'
     runs-on: ubuntu-latest
     outputs:
       published: ${{ steps.release.outputs.published }}
@@ -26,7 +27,7 @@ jobs:
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('lucid-v{0}', inputs.version) }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', inputs.version) }}
         run: python3 .github/scripts/lucid-release-state.py
   windows:
     needs: release-state
@@ -38,6 +39,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Validate the fork version before building
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          $version = $env:PACKAGE_VERSION
+          if (!$version) { $version = $env:GITHUB_REF_NAME -replace '^(lucid-)?v','' }
+          $declared = [regex]::Match((Get-Content src/updates.rs -Raw), 'pub const LUCID_VERSION: &str = "([0-9.]+)";').Groups[1].Value
+          if (!$declared -or $version -ne $declared) { throw 'Release tag/input must match LUCID_VERSION in src/updates.rs.' }
       - name: Check and build Lucid
         shell: pwsh
         run: ./contrib/lucid/build.ps1
@@ -58,8 +68,22 @@ jobs:
           PACKAGE_VERSION: ${{ github.event.inputs.version }}
         run: |
           $version = $env:PACKAGE_VERSION
-          if (!$version) { $version = $env:GITHUB_REF_NAME -replace '^lucid-v','' }
+          if (!$version) { $version = $env:GITHUB_REF_NAME -replace '^(lucid-)?v','' }
           ./contrib/lucid/package.ps1 -Version $version -Iscc $env:ISCC_PATH
+      - name: Sign and verify the portable updater payload
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ github.event.inputs.version }}
+          LUCID_UPDATE_SIGNING_KEY: ${{ secrets.LUCID_UPDATE_SIGNING_KEY }}
+        run: |
+          python -m pip install PyNaCl==1.6.0
+          if ($LASTEXITCODE -ne 0) { throw 'Signing tooling installation failed.' }
+          python .github/scripts/test-lucid-update-package.py
+          if ($LASTEXITCODE -ne 0) { throw 'Update package tests failed.' }
+          $version = $env:PACKAGE_VERSION
+          if (!$version) { $version = $env:GITHUB_REF_NAME -replace '^(lucid-)?v','' }
+          python .github/scripts/lucid-update-package.py --binary dist/Spotifast-Lucid/spotifast.exe --directory dist/Installers --version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Update payload signing failed.' }
       - uses: actions/upload-artifact@v4
         with:
           name: Spotifast-Lucid-Windows-x64
@@ -67,9 +91,12 @@ jobs:
             dist/Installers/Spotifast-Lucid-Windows-x64.zip
             dist/Installers/*-Setup.exe
             dist/Installers/SHA256SUMS.txt
+            dist/Installers/spotifast-v*-x86_64-pc-windows-msvc.zip
+            dist/Installers/checksums.txt
+            dist/Installers/checksums.txt.sig
           if-no-files-found: error
       - name: Publish tagged preview
-        if: startsWith(github.ref, 'refs/tags/lucid-v')
+        if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -80,7 +107,7 @@ jobs:
           if ($published -eq 'true') { exit 0 }
           $notes = "contrib/lucid/RELEASE-$env:GITHUB_REF_NAME.md"
           if (!(Test-Path -LiteralPath $notes)) { $notes = 'FORK.md' }
-          $assets = Get-ChildItem -LiteralPath dist/Installers -File | Where-Object { $_.Name -match '\.zip$|-Setup\.exe$|^SHA256SUMS\.txt$' } | Select-Object -ExpandProperty FullName
+          $assets = Get-ChildItem -LiteralPath dist/Installers -File | Where-Object { $_.Name -match '\.zip$|-Setup\.exe$|^SHA256SUMS\.txt$|^checksums\.txt(?:\.sig)?$' } | Select-Object -ExpandProperty FullName
           gh release create $env:GITHUB_REF_NAME @assets --verify-tag --title "Spotifast Lucid $env:GITHUB_REF_NAME" --notes-file $notes
           if ($LASTEXITCODE -ne 0) {
             # A manual publisher may have finished while this build ran.

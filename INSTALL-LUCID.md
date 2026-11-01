@@ -25,6 +25,33 @@ For a portable copy, download **Spotifast-Lucid-Windows-x64.zip** instead,
 extract the entire ZIP to a folder you own, and run `spotifast.exe` inside it.
 Both downloads contain the same self-contained Rust application.
 
+## Updates
+
+Lucid **0.7.0 and newer** checks our GitHub releases when it launches and then
+at most once a day, respecting the existing network/metered connection policy.
+The update badge stays available when a new version is found. Click it, or
+open **Settings → About → Check for updates**, then **Download update** and
+**Restart to update** when ready. Checking does not install anything. Automatic
+downloads stay off by default; a restart always waits for your click.
+
+The app verifies our publisher signature and the download's SHA-256 before
+using Spotifast's existing native updater. It keeps `spotifast-data`, your
+selected theme and Soloist pairing. Music on this computer stops briefly
+when the app restarts. The old executable is restored if the new one cannot
+start. Only this fork's releases are offered. New releases use `v0.7.0` style
+tags; old `lucid-v*` download links still work. The About section shows both
+Lucid's package version and the integrated upstream Spotifast version.
+
+For **0.6.0 or earlier**, run the newer installer in the same folder or use
+the manual portable steps below once. The old builds cannot enable their
+own updater without this one-time upgrade. Source updates still go through
+`contrib/lucid/update.ps1`, keeping upstream changes reviewed and tested
+before they enter a Lucid release.
+
+Checks contact GitHub, without Spotify credentials. Update downloads come
+from GitHub release-asset hosts through the app's existing proxy/TLS client.
+No browser engine, updater service, task or extra application runtime is added.
+
 ## DJ and Smart Shuffle through Soloist
 
 These modes can continue in Soloist after a Spotify app starts them. Spotifast
@@ -149,8 +176,7 @@ Then reopen Spotifast and select the new theme in Appearance.
 
 Send friends the release link or clean release ZIP. **Never share your running
 app folder, `spotifast-data`, Client ID, Soloist key or credentials.** Each person
-sets up their own account. The stock Spotifast binary updater is disabled in
-this fork so it cannot replace the port.
+sets up their own account. The native updater uses this fork's signed releases so it preserves the port.
 
 ## Credits
 

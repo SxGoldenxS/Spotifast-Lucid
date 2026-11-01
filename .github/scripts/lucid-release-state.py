@@ -18,8 +18,8 @@ ASSETS = {
 
 
 def already_published(repo, tag, token):
-    if not re.fullmatch(r"lucid-v\d+\.\d+\.\d+", tag):
-        raise ValueError("Expected a Lucid version tag such as lucid-v0.5.0")
+    if not re.fullmatch(r"(?:lucid-)?v\d+\.\d+\.\d+", tag):
+        raise ValueError("Expected v0.7.0 or a legacy lucid-v0.6.0 style tag")
     if not repo or not token:
         raise ValueError("GitHub repository and token are required for release checks")
     url = f"https://api.github.com/repos/{repo}/releases/tags/{urllib.parse.quote(tag, safe='')}"
@@ -38,12 +38,13 @@ def already_published(repo, tag, token):
     if release.get("tag_name") != tag or release.get("draft") is not False:
         raise ValueError("Existing release is not published for this tag; inspect it before continuing")
     assets = {asset["name"]: asset for asset in release.get("assets", [])}
+    required = ASSETS | ({f"spotifast-{tag}-x86_64-pc-windows-msvc.zip", "checksums.txt", "checksums.txt.sig"} if tag.startswith("v") else set())
     if any(
         name not in assets
         or assets[name].get("state") != "uploaded"
         or assets[name].get("size", 0) <= 0
         or not re.fullmatch(r"sha256:[0-9a-f]{64}", assets[name].get("digest") or "")
-        for name in ASSETS
+        for name in required
     ):
         raise ValueError("Published release is missing verified downloads; inspect it before continuing")
     return True
